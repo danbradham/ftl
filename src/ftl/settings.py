@@ -4,7 +4,6 @@ from typing import TypedDict
 
 from platformdirs import user_data_dir
 
-LIB_DIR = Path(__file__).parent
 USER_DATA_DIR = Path(user_data_dir("ffmpeg-tools"))
 USER_SETTINGS = USER_DATA_DIR / "settings.json"
 
