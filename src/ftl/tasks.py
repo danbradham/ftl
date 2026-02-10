@@ -29,9 +29,20 @@ class FileSequence:
     stem: str
     suffix: str
     padding: int
-    files: list[PathType] = field(repr=False)
     frame_start: int
     frame_end: int
+    files: list[PathType] = field(repr=False, default_factory=list)
+    missing_frames: list[int] = field(default_factory=list)
+
+    def format(self, relative_to: PathType | None = None):
+        if relative_to:
+            path = self.path.relative_to(Path(relative_to))
+        else:
+            path = self.path
+        result = f"{path.as_posix()} [{self.frame_start}-{self.frame_end}]"
+        if self.missing_frames:
+            result += f"\n  missing {self.missing_frames}"
+        return result
 
     @classmethod
     def from_file(cls, file: PathType):
@@ -59,7 +70,24 @@ class FileSequence:
             name = file.name.replace(match, f"%{padding:0>2d}d")
             stem = file.name.split(match)[0].strip(".")
             path = file.with_name(name)
-            return cls(path, name, stem, suffix, padding, files, frames[0], frames[-1])
+            missing_frames = []
+            prev_frame = frames[0]
+            for frame in frames[1:]:
+                if frame - prev_frame > 1:
+                    missing_frames.extend(range(prev_frame + 1, frame))
+                prev_frame = frame
+
+            return cls(
+                path,
+                name,
+                stem,
+                suffix,
+                padding,
+                frames[0],
+                frames[-1],
+                files,
+                missing_frames,
+            )
 
         return
 

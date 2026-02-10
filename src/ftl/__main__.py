@@ -126,13 +126,13 @@ def ls(folder: Path = Path("."), recursive: bool = False):
             sequences.extend(tasks.get_sequences(Path(root)))
 
     for sequence in sorted(sequences, key=lambda s: s.path.as_posix()):
-        rel = sequence.path.relative_to(folder)
-        print(rel.as_posix() + f" [{sequence.frame_start}-{sequence.frame_end}]")
+        text = sequence.format(relative_to=folder)
+        print(text.replace("missing", "[red]missing[/red]"))
 
 
 @cli.command()
 def install():
-    """Install System-Wide context menu commands..."""
+    """Install system-wide context menu commands..."""
 
     if sys.platform == "win32":
         from ftl._win import install
@@ -148,7 +148,7 @@ def install():
 
 @cli.command()
 def uninstall():
-    """Uninstall System-Wide context menu commands..."""
+    """Uninstall system-wide context menu commands..."""
 
     if sys.platform == "win32":
         from ftl._win import uninstall
