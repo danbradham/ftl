@@ -11,11 +11,25 @@ from ftl.settings import Settings, default_settings, get_settings, save_settings
 
 
 def safe_eval(expr):
+    """Try to evaluate an expression as a Python object.
+
+    We handle a couple of edge cases to ensure users
+    don't need to escape strings in weird ways.
+    """
+
     try:
         return literal_eval(expr)
     except ValueError as e:
+        # If we get malformed node or string
+        # the user passed in a string but
+        # didn't escape it.
         if "malformed node or string" not in str(e):
             raise typer.Exit(code=1)
+    except SyntaxError:
+        # If expr starts with . or /
+        # the user was probably passing in a file path
+        if expr[0] not in (".", "/"):
+            raise
     return expr
 
 
@@ -30,7 +44,7 @@ def _set(key: str, value: str):
 
     key_type = Settings.__annotations__.get(key)
     if key_type is None:
-        print(f"'{key}' is not a valid Setting...")
+        print(f"{key!r} is not a valid Setting...")
         raise typer.Exit(code=1)
 
     if not isinstance(value, key_type):
@@ -38,13 +52,13 @@ def _set(key: str, value: str):
             expected = "True/False"
         else:
             expected = key_type.__name__
-        print(f"'{key}' expected {expected}, got {value}...")
+        print(f"{key!r} expected {expected!r}, got {value!r}...")
         raise typer.Exit(code=1)
 
     settings = get_settings()
     settings[key] = value
     save_settings(settings)
-    print(f"Saved {key} as {value}.")
+    print(f"Saved {key!r} as {value!r}")
 
 
 @cli.command()
@@ -68,9 +82,9 @@ def editor():
     """Launch the Settings Editor..."""
 
     print("Launching Settings...")
-    from ftl import settings
+    from ftl.ui import SettingsEditor
 
-    settings.main()
+    SettingsEditor.show()
 
 
 @cli.command()

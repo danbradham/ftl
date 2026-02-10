@@ -1,4 +1,5 @@
 # TODO
+- [ ] Rename Settings to Options
 - [ ] Add a Progress Bar
 - [ ] Log to a file
 - [ ] Exception Handling (Popup an error when running in GUI mode.)

@@ -3,7 +3,7 @@
     <img src="media/ftl.png"/>
 </p>
 
-# ftl
+# FTL
 FTL streamlines the process of encoding image sequences into video using best practices. FTL is an exercise in minimalism, seeking to keep workflows simple with *juuust* enough options to get the job done correctly.
 
 <p align="center">

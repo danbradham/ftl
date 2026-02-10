@@ -2,10 +2,11 @@ import sys
 import winreg
 from pathlib import Path
 
-LIB_DIR = Path(__file__).parent
-ICON_FILE = LIB_DIR / "resources/ftl.ico"
-ENCODE_ICON_FILE = LIB_DIR / "resources/encode.ico"
-SETTINGS_ICON_FILE = LIB_DIR / "resources/settings.ico"
+from ftl import resources
+
+ICON_FILE = resources.get("ftl.ico")
+ENCODE_ICON_FILE = resources.get("encode.ico")
+SETTINGS_ICON_FILE = resources.get("settings.ico")
 
 
 def install():
