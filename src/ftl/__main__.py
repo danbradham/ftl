@@ -1,0 +1,152 @@
+import os
+import sys
+from ast import literal_eval
+from pathlib import Path
+
+import typer
+from rich import print
+
+from ftl import tasks
+from ftl.settings import Settings, default_settings, get_settings, save_settings
+
+
+def safe_eval(expr):
+    try:
+        return literal_eval(expr)
+    except ValueError as e:
+        if "malformed node or string" not in str(e):
+            raise typer.Exit(code=1)
+    return expr
+
+
+cli = typer.Typer()
+
+
+@cli.command("set")
+def _set(key: str, value: str):
+    """Set the value of a Setting..."""
+
+    value = safe_eval(value)
+
+    key_type = Settings.__annotations__.get(key)
+    if key_type is None:
+        print(f"'{key}' is not a valid Setting...")
+        raise typer.Exit(code=1)
+
+    if not isinstance(value, key_type):
+        if key_type is bool:
+            expected = "True/False"
+        else:
+            expected = key_type.__name__
+        print(f"'{key}' expected {expected}, got {value}...")
+        raise typer.Exit(code=1)
+
+    settings = get_settings()
+    settings[key] = value
+    save_settings(settings)
+    print(f"Saved {key} as {value}.")
+
+
+@cli.command()
+def reset():
+    """Reset to defaults..."""
+
+    save_settings(default_settings())
+    print("Reset to defaults...")
+    print(default_settings())
+
+
+@cli.command()
+def settings():
+    """Show current settings..."""
+
+    print(get_settings())
+
+
+@cli.command()
+def editor():
+    """Launch the Settings Editor..."""
+
+    print("Launching Settings...")
+    from ftl import settings
+
+    settings.main()
+
+
+@cli.command()
+def encode(folder: Path = Path("."), recursive: bool = False, max_depth: int = 2):
+    """Encode a folder of sequences."""
+
+    results = []
+    if not recursive:
+        task = tasks.EncodeFolder(folder, get_settings())
+        task()
+        results.extend(task.result)
+    else:
+        folders = set()
+        for root, subdirs, _ in os.walk(folder, topdown=True):
+            if str(Path(root).relative_to(folder)).count(os.sep) >= max_depth:
+                subdirs[:] = []
+            folders |= set([seq.path.parent for seq in tasks.get_sequences(Path(root))])
+
+        results = []
+        for i, folder in enumerate(folders):
+            print(f"Encode Folder {i + 1} of {len(folders)}")
+            task = tasks.EncodeFolder(folder, get_settings())
+            task()
+            results.extend(task.result)
+
+    print("Artifacts...")
+    print([r.as_posix() for r in results])
+
+
+@cli.command()
+def ls(folder: Path = Path("."), recursive: bool = False):
+    """List sequences in a folder."""
+
+    if not recursive:
+        sequences = tasks.get_sequences(folder)
+    else:
+        sequences = []
+        for root, _, _ in os.walk(folder):
+            sequences.extend(tasks.get_sequences(Path(root)))
+
+    for sequence in sorted(sequences, key=lambda s: s.path.as_posix()):
+        rel = sequence.path.relative_to(folder)
+        print(rel.as_posix() + f" [{sequence.frame_start}-{sequence.frame_end}]")
+
+
+@cli.command()
+def install():
+    """Install System-Wide context menu commands..."""
+
+    if sys.platform == "win32":
+        from ftl._win import install
+
+        install()
+
+    if sys.platform == "darwin":
+        raise RuntimeError("Context Menu commands not supported for MacOS yet...")
+
+    if sys.platform == "linux":
+        raise RuntimeError("Context Menu commands not supported for Linux yet...")
+
+
+@cli.command()
+def uninstall():
+    """Uninstall System-Wide context menu commands..."""
+
+    if sys.platform == "win32":
+        from ftl._win import uninstall
+
+        uninstall()
+
+    if sys.platform == "darwin":
+        raise RuntimeError("Context Menu commands not supported for MacOS yet...")
+
+    if sys.platform == "linux":
+        raise RuntimeError("Context Menu commands not supported for Linux yet...")
+
+
+if __name__ == "__main__":
+    cli()
