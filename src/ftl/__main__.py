@@ -162,5 +162,31 @@ def uninstall():
         raise RuntimeError("Context Menu commands not supported for Linux yet...")
 
 
+@cli.command()
+def version():
+    """List version and key dependencies."""
+
+    from importlib.metadata import version
+
+    from ftl import tasks
+
+    # Get ffmpeg info
+    ffmpeg_version = "N/A"
+    try:
+        ffmpeg_executable = tasks.get_ffmpeg().replace("\\", "/")
+        ffmpeg_version = tasks.get_ffmpeg_version()
+    except Exception:
+        ffmpeg_executable = "FFMPEG not found..."
+
+    version_info = {
+        "python": sys.version,
+        "ftl": version("ftl"),
+        "dearpygui": version("dearpygui"),
+        "ffmpeg": ffmpeg_version,
+        "ffmpeg_exe": ffmpeg_executable,
+    }
+    print(version_info)
+
+
 if __name__ == "__main__":
     cli()

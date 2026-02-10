@@ -22,6 +22,16 @@ def get_ffmpeg():
     raise FileNotFoundError("ffmpeg not found in PATH")
 
 
+def get_ffmpeg_version():
+    try:
+        output = subprocess.check_output([get_ffmpeg(), "-version"], text=True)
+        version = output.splitlines()[0].split()[2]
+        return version
+    except Exception as e:
+        print(f"Error getting ffmpeg version: {e}")
+        return None
+
+
 @dataclass
 class FileSequence:
     path: PathType
