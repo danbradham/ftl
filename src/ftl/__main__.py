@@ -98,7 +98,7 @@ def encode(folder: Path = Path("."), recursive: bool = False, max_depth: int = 2
         task = tasks.EncodeFolder(folder, get_settings())
 
         # Show progress dialog...
-        ui.TaskProgressDialog.from_tasks([task])
+        ui.TaskProgressDialog.from_tasks([t for tg in task.task_groups for t in tg])
 
         task()
         results.extend(task.result)
@@ -111,12 +111,14 @@ def encode(folder: Path = Path("."), recursive: bool = False, max_depth: int = 2
             folders |= set([seq.path.parent for seq in tasks.get_sequences(Path(root))])
 
         task_group = []
+        sub_tasks = []
         for i, folder in enumerate(folders):
             task = tasks.EncodeFolder(folder, get_settings())
+            sub_tasks.extend([t for tg in task.task_groups for t in tg])
             task_group.append(task)
 
         # Show progress dialog...
-        ui.TaskProgressDialog.from_tasks(task_group)
+        ui.TaskProgressDialog.from_tasks(sub_tasks)
 
         for task in task_group:
             task()

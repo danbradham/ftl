@@ -106,6 +106,8 @@ class FileSequence:
 
 
 def get_sequences(folder: PathType) -> list[FileSequence]:
+    """List of all the file sequences in a folder."""
+
     results = []
     seen = []
 
@@ -129,6 +131,14 @@ class TaskStatus(enum.Enum):
     RUNNING = "running"
     SUCCESS = "success"
     FAILURE = "failure"
+
+
+@dataclass
+class TaskEvent:
+    task_id: str
+    task_type: str
+    task_status: TaskStatus
+    type: str
 
 
 @dataclass
