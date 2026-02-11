@@ -1,3 +1,7 @@
+
+<p align="center"><i align="center">This software is currently in the prototyping phase.</i></p>
+
+<br>
 <p align="center">
     <img src="media/ftl.png"/>
 </p>
@@ -8,9 +12,6 @@ FTL streamlines the process of encoding image sequences into video using best pr
 <p align="center">
     <img src="media/ftl_demo.gif"/>
 </p>
-
-[!WARNING]
-This software is a prototype. At this stage of development I'm exploring ideas and design patterns.  
 
 ## Features
 - 🚀 **FFMPEG-powered**: Convert image sequences to mov/mp4/gif with optimal settings
