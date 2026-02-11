@@ -112,7 +112,6 @@ def encode(folder: Path = Path("."), recursive: bool = False, max_depth: int = 2
 
         task_group = []
         for i, folder in enumerate(folders):
-            print(f"Encode Folder {i + 1} of {len(folders)}")
             task = tasks.EncodeFolder(folder, get_settings())
             task_group.append(task)
 

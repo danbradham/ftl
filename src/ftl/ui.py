@@ -1,3 +1,4 @@
+import atexit
 import multiprocessing
 from pathlib import Path
 from uuid import uuid4
@@ -12,6 +13,14 @@ from ftl.settings import (
     save_settings,
     sizeStr_to_int,
 )
+
+
+def on_exit():
+    for proc in multiprocessing.active_children():
+        proc.join()
+
+
+atexit.register(on_exit)
 
 
 def shared_state(key=None, cache={}):
@@ -106,17 +115,24 @@ class TaskProgressDialog:
             title=self.title,
             width=self.width,
             height=self.height,
+            resizable=False,
+            decorated=False,
             large_icon=const.ICON_FILE,
         )
         with dpg.window(tag="primary", width=self.width, height=self.height):
             dpg.add_text("Perparing Tasks", tag="label")
+            dpg.add_spacer(height=10)
             dpg.add_progress_bar(tag="progress", default_value=-1, width=-1)
+            dpg.add_spacer(height=10)
 
         # Always on top...
         dpg.set_viewport_always_top(True)
 
         # Centered on screen.
         center_viewport(self.width, self.height)
+
+    def close(self, delay=10):
+        self.exit_after = dpg.get_total_time() + delay
 
     def check_events(self):
         events = self.state.get("events", None)
@@ -129,8 +145,7 @@ class TaskProgressDialog:
                     dpg.set_value("progress", event["t"])
                 elif type == "finished":
                     dpg.set_value("progress", 1.0)
-                    # Mark for close
-                    self.exit_after = dpg.get_total_time() + 1
+                    self.close()
                 else:
                     dpg.set_value("label", f"Unknown event type: {type}")
 
@@ -138,7 +153,11 @@ class TaskProgressDialog:
                 dpg.set_value("label", message)
 
     def render(self):
-        self.check_events()
+        try:
+            self.check_events()
+        except FileNotFoundError:
+            # Parent process has shut down.
+            dpg.stop_dearpygui()
 
         if self.exit_after and dpg.get_total_time() > self.exit_after:
             dpg.stop_dearpygui()
@@ -152,11 +171,14 @@ class TaskProgressDialog:
         state["events"] = manager.list()
 
         def log_handler(event):
-            if event.get("type") != "progress":
+            task = event.get("task")
+            type = event.get("type")
+            if type != "progress":
                 return
 
-            t = float(sum([task.log.t for task in tasks])) / float(total_tasks)
-            new_event = {"event": event["event"], "message": event.get("message"), "t": t}
+            t = float(sum([t.log.t for t in tasks])) / float(total_tasks)
+            message = f"Encoding {tasks.index(task) + 1} of {total_tasks}"
+            new_event = {"event": event["event"], "message": message, "t": t}
             if t < 1.0:
                 new_event["event"] = "step"
             state["events"].append(new_event)
@@ -434,7 +456,6 @@ def show_detached(wcls, wid, state, **kwargs):
         target=show,
         args=(wcls, wid, state),
         kwargs=kwargs,
-        daemon=not wait,
     )
     proc.start()
     if wait:
