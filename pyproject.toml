@@ -14,7 +14,7 @@ dependencies = [
     "typer>=0.21.1",
 ]
 license = "MIT"
-license-files = ["LICENSE", "AUTHORS.md"]
+license-files = ["LICENSE"]
 
 [tool.uv]
 package = true
