@@ -91,11 +91,18 @@ def editor():
 def encode(folder: Path = Path("."), recursive: bool = False, max_depth: int = 2):
     """Encode a folder of sequences."""
 
+    from ftl import ui
+
     results = []
     if not recursive:
         task = tasks.EncodeFolder(folder, get_settings())
+
+        # Show progress dialog...
+        ui.TaskProgressDialog.from_tasks([task])
+
         task()
         results.extend(task.result)
+
     else:
         folders = set()
         for root, subdirs, _ in os.walk(folder, topdown=True):
@@ -103,10 +110,16 @@ def encode(folder: Path = Path("."), recursive: bool = False, max_depth: int = 2
                 subdirs[:] = []
             folders |= set([seq.path.parent for seq in tasks.get_sequences(Path(root))])
 
-        results = []
+        task_group = []
         for i, folder in enumerate(folders):
             print(f"Encode Folder {i + 1} of {len(folders)}")
             task = tasks.EncodeFolder(folder, get_settings())
+            task_group.append(task)
+
+        # Show progress dialog...
+        ui.TaskProgressDialog.from_tasks(task_group)
+
+        for task in task_group:
             task()
             results.extend(task.result)
 
