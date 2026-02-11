@@ -1,5 +1,7 @@
+import atexit
 import multiprocessing
 from pathlib import Path
+from uuid import uuid4
 
 import dearpygui.dearpygui as dpg
 
@@ -11,6 +13,14 @@ from ftl.settings import (
     save_settings,
     sizeStr_to_int,
 )
+
+
+def on_exit():
+    for proc in multiprocessing.active_children():
+        proc.join()
+
+
+atexit.register(on_exit)
 
 
 def shared_state(key=None, cache={}):
@@ -25,9 +35,9 @@ def shared_state(key=None, cache={}):
     """
 
     if not cache:
-        data_manager = multiprocessing.Manager()
-        shared_state = data_manager.dict()
-        cache["data_manager"] = data_manager
+        manager = multiprocessing.Manager()
+        shared_state = manager.dict()
+        cache["manager"] = manager
         cache[key] = shared_state
     return cache[key]
 
@@ -91,6 +101,98 @@ def get_theme(name="main", cache={}):
     return cache[name]
 
 
+class TaskProgressDialog:
+    title = "Progress"
+    width = 400
+    height = 100
+
+    def __init__(self, wid, state):
+        self.wid = wid
+        self.state = state
+        self.exit_after = None
+
+        dpg.create_viewport(
+            title=self.title,
+            width=self.width,
+            height=self.height,
+            resizable=False,
+            decorated=False,
+            large_icon=const.ICON_FILE,
+        )
+        with dpg.window(tag="primary", width=self.width, height=self.height):
+            dpg.add_text("Perparing Tasks", tag="label")
+            dpg.add_spacer(height=10)
+            dpg.add_progress_bar(tag="progress", default_value=-1, width=-1)
+            dpg.add_spacer(height=10)
+
+        # Always on top...
+        dpg.set_viewport_always_top(True)
+
+        # Centered on screen.
+        center_viewport(self.width, self.height)
+
+    def close(self, delay=10):
+        self.exit_after = dpg.get_total_time() + delay
+
+    def check_events(self):
+        events = self.state.get("events", None)
+        while events:
+            event = events.pop(0)
+            if type := event.get("event"):
+                if type == "start":
+                    dpg.set_value("progress", 0.0)
+                elif type == "step":
+                    dpg.set_value("progress", event["t"])
+                elif type == "finished":
+                    dpg.set_value("progress", 1.0)
+                    self.close()
+                else:
+                    dpg.set_value("label", f"Unknown event type: {type}")
+
+            if message := event.get("message"):
+                dpg.set_value("label", message)
+
+    def render(self):
+        try:
+            self.check_events()
+        except FileNotFoundError:
+            # Parent process has shut down.
+            dpg.stop_dearpygui()
+
+        if self.exit_after and dpg.get_total_time() > self.exit_after:
+            dpg.stop_dearpygui()
+
+    @classmethod
+    def from_tasks(cls, tasks):
+        total_tasks = len(tasks)
+        wid = "progress" + uuid4().hex
+        manager = multiprocessing.Manager()
+        state = manager.dict()
+        state["events"] = manager.list()
+
+        def log_handler(event):
+            task = event.get("task")
+            type = event.get("type")
+            if type != "progress":
+                return
+
+            t = float(sum([t.log.t for t in tasks])) / float(total_tasks)
+            message = f"Encoding {tasks.index(task) + 1} of {total_tasks}"
+            new_event = {"event": event["event"], "message": message, "t": t}
+            if t < 1.0:
+                new_event["event"] = "step"
+            state["events"].append(new_event)
+
+        for task in tasks:
+            task.add_handler(log_handler)
+
+        return cls.show(wid, state)
+
+    @classmethod
+    def show(cls, wid, state):
+        return show_detached(cls, wid, state, wait=False)
+
+
 class FileSelector:
     title = "FTL / Select a Folder..."
     width = 700
@@ -133,7 +235,7 @@ class FileSelector:
         dpg.set_item_height("dialog", dpg.get_viewport_height() - 40)
 
     @classmethod
-    def get_directory(cls, wid=None, state=None):
+    def show(cls, wid=None, state=None):
         wid = wid or "get_directory"
         state = state or shared_state()
         return show_detached(
@@ -348,9 +450,16 @@ def show_detached(wcls, wid, state, **kwargs):
         dict: The state set by the UI for the given wid.
     """
 
-    proc = multiprocessing.Process(target=show, args=(wcls, wid, state), kwargs=kwargs)
+    wait = kwargs.get("wait", True)
+
+    proc = multiprocessing.Process(
+        target=show,
+        args=(wcls, wid, state),
+        kwargs=kwargs,
+    )
     proc.start()
-    proc.join()
+    if wait:
+        proc.join()
     return state.get(wid, {})
 
 
@@ -370,11 +479,18 @@ def show(wcls, wid, state, **kwargs):
 
     dpg.bind_font(font)
 
-    wcls(wid, state)
+    window = wcls(wid, state)
+    render = getattr(window, "render", None)
 
     dpg.bind_theme(get_theme("main"))
     dpg.setup_dearpygui()
     dpg.show_viewport()
     dpg.set_primary_window("primary", True)
-    dpg.start_dearpygui()
+
+    while dpg.is_dearpygui_running():
+        if render:
+            render()
+
+        dpg.render_dearpygui_frame()
+
     dpg.destroy_context()

@@ -1,10 +1,13 @@
+from __future__ import annotations
+
 import enum
+import logging
 import os
 import re
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from .settings import Settings, default_settings
 
@@ -41,10 +44,10 @@ class FileSequence:
     padding: int
     frame_start: int
     frame_end: int
-    files: list[PathType] = field(repr=False, default_factory=list)
+    files: list[Path] = field(repr=False, default_factory=list)
     missing_frames: list[int] = field(default_factory=list)
 
-    def format(self, relative_to: PathType | None = None):
+    def format(self, relative_to: PathType | None = None) -> str:
         if relative_to:
             path = self.path.relative_to(Path(relative_to))
         else:
@@ -102,7 +105,9 @@ class FileSequence:
         return
 
 
-def get_sequences(folder: PathType):
+def get_sequences(folder: PathType) -> list[FileSequence]:
+    """List of all the file sequences in a folder."""
+
     results = []
     seen = []
 
@@ -123,24 +128,117 @@ def get_sequences(folder: PathType):
 
 class TaskStatus(enum.Enum):
     WAITING = "waiting"
+    RUNNING = "running"
     SUCCESS = "success"
     FAILURE = "failure"
 
 
+@dataclass
+class TaskEvent:
+    task_id: str
+    task_type: str
+    task_status: TaskStatus
+    type: str
+
+
+@dataclass
+class TaskLog:
+    task: Task
+    total: int = field(default=100)
+    value: int = field(default=0)
+    t: float = field(default=0.0)
+    records: list[dict[str, Any]] = field(default_factory=list, repr=False)
+    logger: logging.Logger = field(init=False, repr=False)
+    handlers: set[Callable[[dict]]] = field(default_factory=set, repr=False)
+
+    def __post_init__(self):
+        self.logger = logging.getLogger(f"{__name__}.{self.task.name}>")
+
+    def __call__(self, message: str, **extra: Any):
+        self.emit_record(type="log", message=message, **extra)
+        self.logger.info(message)
+
+    def start(self, **extra: Any):
+        self.emit_record(type="progress", event="start", message=None, **extra)
+
+    def step(self, amount: int, message: str | None = None, **extra: Any):
+        self.value = min(self.value + amount, self.total)
+        self.t = float(self.value) / float(self.total)
+        if message:
+            self.logger.info(f"{self.t:.0%} | {message}")
+
+        event = ("step", "finished")[self.t == 1.0]
+        self.emit_record(type="progress", event=event, message=message, **extra)
+
+    def emit_record(self, **fields: Any):
+        record = dict(
+            task=self.task,
+            name=self.task.name,
+            status=self.task.status,
+            total=self.total,
+            value=self.value,
+            t=self.t,
+        )
+        record.update(fields)
+        self.records.append(record)
+        for handler in self.handlers:
+            handler(record)
+
+    def add_handler(self, fn: Callable[[dict], Any]):
+        self.handlers.add(fn)
+
+    def remove_handler(self, fn: Callable[[dict], Any]):
+        self.handlers.remove(fn)
+
+
 class Task:
+    """Base for all Task types.
+
+    Task subclasses must:
+        - Implement the run method.
+
+    Task subclasses may:
+        - Implement __init__ to add arguments to a Task. Be
+          sure to call super().__init__()
+        - Set `self.log.total` to a maximum value for your Task's progress.
+        - Report progress using `self.log.step(amount: int, message: str)`
+        - Log INFO using `self.log(message: str, **extras)`
+    """
+
     def __init__(self) -> None:
         self.result = None
         self.error = None
         self.status = TaskStatus.WAITING
+        self.name = self.__class__.__name__
+        self.log = TaskLog(self)
 
     def __call__(self):
+        """Start and run the Task."""
         try:
+            self.start()
             self.result = self.run()
             self.status = TaskStatus.SUCCESS
+            self.log.step(self.log.total, "Task Completed.")
         except Exception as e:
             self.error = e
             self.status = TaskStatus.FAILURE
+            self.log.emit_record(type="error", message="Task Failed.", error=e)
             raise
+
+    def start(self):
+        """Called internally just before `run`."""
+        self.status = TaskStatus.RUNNING
+        self.log.start()
+
+    def add_handler(self, handler: Callable[[dict], Any]):
+        """Add a handler, a function that receives all log records from the Task."""
+
+        self.log.add_handler(handler)
+
+    def remove_handler(self, handler: Callable[[dict], Any]):
+        """Remvoe a handler."""
+
+        self.log.remove_handler(handler)
 
     def run(self) -> Any:
         return NotImplemented
@@ -154,7 +252,7 @@ class EncodeMov(Task):
         self.max_size = max_size
         super().__init__()
 
-    def run(self) -> PathType:
+    def command(self) -> list[str]:
         # fmt: off
         cmd = [
             get_ffmpeg(),
@@ -203,11 +301,16 @@ class EncodeMov(Task):
         if fs:
             cmd[1:1] = ["-start_number", str(fs.frame_start)]
 
+        return cmd
+
+    def run(self) -> PathType:
         # Ensure destination directory exists...
         self.dst.parent.mkdir(parents=True, exist_ok=True)
 
-        print(f"  MOV: {self.src.name} -> {self.dst.name}")
-        # print(f"  CMD: {' '.join(cmd)}\n")
+        cmd = self.command()
+
+        self.log(f"  MOV: {self.src.name} -> {self.dst.name}")
+        self.log(f"  CMD: {' '.join(cmd)}\n")
 
         try:
             subprocess.run(
@@ -231,7 +334,7 @@ class EncodeMp4(Task):
         self.max_size = max_size
         super().__init__()
 
-    def run(self) -> PathType:
+    def command(self) -> list[str]:
         # fmt: off
         cmd = [
             get_ffmpeg(),
@@ -283,15 +386,21 @@ class EncodeMp4(Task):
         if fs:
             cmd[1:1] = ["-start_number", str(fs.frame_start)]
 
+        return cmd
+
+    def run(self) -> PathType:
+
         # Ensure destination directory exists...
         self.dst.parent.mkdir(parents=True, exist_ok=True)
 
-        print(f"  MP4: {self.src.name} -> {self.dst.name}")
-        # print(f"  CMD: {' '.join(cmd)}\n")
+        cmd = self.command()
+
+        self.log(f"  MP4: {self.src.name} -> {self.dst.name}")
+        self.log(f"  CMD: {' '.join(cmd)}\n")
 
         try:
             subprocess.run(
-                cmd,
+                self.command(),
                 check=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -321,7 +430,7 @@ class EncodeGif(Task):
         self.max_colors = max_colors
         super().__init__()
 
-    def run(self) -> PathType:
+    def command(self) -> list[str]:
         # fmt: off
         cmd = [get_ffmpeg(),
             "-i", str(self.src),
@@ -364,11 +473,15 @@ class EncodeGif(Task):
         if fs:
             cmd[1:1] = ["-start_number", str(fs.frame_start)]
 
+        return cmd
+
+    def run(self) -> PathType:
         # Ensure destination directory exists...
         self.dst.parent.mkdir(parents=True, exist_ok=True)
 
-        print(f"  GIF: {self.src.name} -> {self.dst.name}")
-        # print(f"  CMD: {' '.join(cmd)}\n")
+        cmd = self.command()
+        self.log(f"  GIF: {self.src.name} -> {self.dst.name}")
+        self.log(f"  CMD: {' '.join(cmd)}\n")
 
         try:
             subprocess.run(
@@ -391,8 +504,9 @@ class EncodeFolder(Task):
         self.sequences = get_sequences(folder)
         self.settings = default_settings()
         self.settings.update(settings)
+        self.prepare_tasks()
 
-    def run(self) -> list[PathType]:
+    def prepare_tasks(self):
         if not self.sequences:
             raise ValueError(f"No sequences found in '{self.folder}' ...")
 
@@ -400,6 +514,7 @@ class EncodeFolder(Task):
         mp4_folder = (self.folder / self.settings["mp4_folder"]).resolve()
         gif_folder = (self.folder / self.settings["gif_folder"]).resolve()
 
+        task_count = 0
         task_groups = []
         for seq in self.sequences:
             task_group = []
@@ -411,6 +526,7 @@ class EncodeFolder(Task):
                     max_size=self.settings["mov_size"],
                 )
                 task_group.append(mov_task)
+                task_count += 1
             if self.settings["mp4_enabled"]:
                 mp4_task = EncodeMp4(
                     src=seq.path,
@@ -419,6 +535,7 @@ class EncodeFolder(Task):
                     max_size=self.settings["mp4_size"],
                 )
                 task_group.append(mp4_task)
+                task_count += 1
             if self.settings["gif_enabled"]:
                 gif_task = EncodeGif(
                     src=seq.path,
@@ -428,14 +545,24 @@ class EncodeFolder(Task):
                     max_colors=self.settings["gif_colors"],
                 )
                 task_group.append(gif_task)
+                task_count += 1
 
             task_groups.append(task_group)
 
+        self.task_groups = task_groups
+        self.task_count = task_count
+        self.log.total = task_count
+        self.log(
+            f"Found {len(self.task_groups)} file sequences. Prepared {self.task_count} tasks."
+        )
+
+    def run(self) -> list[PathType]:
+
         results = []
-        for i, task_group in enumerate(task_groups):
-            print(f"Sequence {i + 1} of {len(task_groups)}")
-            for j, task in enumerate(task_group):
-                print(f"  Encode {j + 1} of {len(task_group)}")
+        for i, task_group in enumerate(self.task_groups):
+            self.log(f"Sequence {i + 1} of {len(self.task_groups)}")
+            for task in task_group:
+                self.log.step(1)
                 task()
                 results.append(task.result)
 
