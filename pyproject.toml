@@ -1,7 +1,7 @@
 [project]
 name = "ftl"
 version = "0.1.0"
-description = "Add your description here"
+description = "FFMPEG encoding simplified."
 readme = "README.md"
 authors = [
     { name = "Dan Bradham", email = "danielbradham@gmail.com" }
