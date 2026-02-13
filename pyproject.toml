@@ -11,6 +11,7 @@ dependencies = [
     "dearpygui>=2.1.1",
     "platformdirs>=4.5.1",
     "pyautogui>=0.9.54",
+    "typeguard>=4.4.4",
     "typer>=0.21.1",
 ]
 license = "MIT"
