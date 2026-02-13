@@ -6,6 +6,7 @@ from pathlib import Path
 import typer
 from rich import print
 
+from ftl import files as fs
 from ftl import tasks
 from ftl.settings import Settings, default_settings, get_settings, save_settings
 
@@ -108,7 +109,8 @@ def encode(folder: Path = Path("."), recursive: bool = False, max_depth: int = 2
         for root, subdirs, _ in os.walk(folder, topdown=True):
             if str(Path(root).relative_to(folder)).count(os.sep) >= max_depth:
                 subdirs[:] = []
-            folders |= set([seq.path.parent for seq in tasks.get_sequences(Path(root))])
+            files = (f for f in fs.ls(Path(root)) if isinstance(f, fs.FileSequence))
+            folders |= set(f.path.parent for f in files)
 
         task_group = []
         sub_tasks = []
@@ -129,18 +131,12 @@ def encode(folder: Path = Path("."), recursive: bool = False, max_depth: int = 2
 
 
 @cli.command()
-def ls(folder: Path = Path("."), recursive: bool = False):
+def ls(folder: Path = Path("."), recursive: bool = False, max_depth: int = 2):
     """List sequences in a folder."""
 
-    if not recursive:
-        sequences = tasks.get_sequences(folder)
-    else:
-        sequences = []
-        for root, _, _ in os.walk(folder):
-            sequences.extend(tasks.get_sequences(Path(root)))
-
-    for sequence in sorted(sequences, key=lambda s: s.path.as_posix()):
-        text = sequence.format(relative_to=folder)
+    max_depth = (1, max_depth)[recursive]
+    for f in fs.ls(folder, max_depth):
+        text = f.format(relative_to=folder)
         print(text.replace("missing", "[red]missing[/red]"))
 
 

@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import os
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Type
 
 PathType = Path | os.PathLike | str
 
@@ -148,16 +151,17 @@ def ls(folder: PathType, max_depth: int = 1) -> list[File | FileSequence]:
 
             f = as_file(file)
             seen.append(file)
-            results.append(f)
             if isinstance(f, FileSequence):
                 seen.extend(f.files)
+
+            results.append(f)
 
     return sorted(
         results, key=lambda f: (-len(f.path.parts), isinstance(f, File), f.path)
     )
 
 
-FileType = File | FileSequence
+FileType = Type[File] | Type[FileSequence]
 
 
 def main():

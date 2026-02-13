@@ -1,19 +1,26 @@
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from ftl.files import FileSequence, PathType, ls
-from ftl.settings import default_settings
+from ftl.settings import Settings, default_settings
+from ftl.tasks.base import Task
 from ftl.tasks.encode_gif import EncodeGif
 from ftl.tasks.encode_mov import EncodeMov
 from ftl.tasks.encode_mp4 import EncodeMp4
 
 
+@dataclass
 class EncodeFolder(Task):
-    def __init__(self, folder: PathType, settings: Settings) -> None:
-        super().__init__()
-        self.folder = Path(folder)
-        self.sequences = [f for f in ls(folder) if isinstance(f, FileSequence)]
-        self.settings = default_settings()
-        self.settings.update(settings)
+    folder: PathType = field(default=Path("."))
+    settings: Settings = field(default_factory=default_settings)
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.folder = Path(self.folder)
+        self.sequences = [f for f in ls(self.folder) if isinstance(f, FileSequence)]
+        settings = default_settings()
+        settings.update(self.settings)
+        self.settings = settings
         self.prepare_tasks()
 
     def prepare_tasks(self):
