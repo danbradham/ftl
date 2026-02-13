@@ -1,15 +1,20 @@
 from __future__ import annotations
 
-import json
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field, fields
+from dataclasses import dataclass, field, fields, is_dataclass
 from pathlib import Path
-from typing import Annotated, Any, Literal, Mapping, Type, get_type_hints
+from typing import Any, Literal, Mapping, Type, get_type_hints
 
+from cattrs import (
+    register_structure_hook,
+    register_unstructure_hook,
+    structure,
+    unstructure,
+)
 from typeguard import TypeCheckError, check_type
 
-_task_registry = {}
-_type_registry = {}
+_task_registry: dict[str, Type[Task]] = {}
+_type_registry: dict[str, Type[Any]] = {}
 _missing = object()
 
 Size = Literal[-1, 256, 512, 768, 1024, 1280, 1920, 2048, 2160, 3840, 6144]
@@ -115,6 +120,30 @@ class Rule:
     file_type: Literal["FileSequence", "File"]
     file_extensions: list[str]
     tasks: list[ParameterizedTask]
+    enabled: bool = field(default=True)
+    schema_version: int = field(default=1, metadata={"hidden": True})
+
+    @classmethod
+    def from_dict(cls, data):
+        schema_version = data.get("schema_version", cls.schema_version)
+        if schema_version > cls.schema_version:
+            raise ValueError(
+                f"This version of FTL only supports "
+                f"Rule.schema_version <= {cls.schema_version}"
+            )
+        # Apply Schema Migrations here.
+        # - Apply cascading upgrades...
+        # - If a migration can not fully maintain the behavior
+        #   or a previous rule. Set data["enabled"] = False.
+        #   This will allow users to complete the changes.
+        # if schema_version == 1:
+        #     ...
+        #     data["schema_version"] = 2
+        # if schema_version == 2:
+        #     ...
+        #     data["schema_version"] = 3
+        if schema_version == cls.schema_version:
+            return cls(**data)
 
 
 ##########################
@@ -130,7 +159,7 @@ class Colorspace:
 
 @dataclass
 class EncodeMp4(Task):
-    input_colorspace: Colorspace = field(default=Colorspace("srgb"), kw_only=True)
+    input_colorspace: str = field(default="srgb", kw_only=True)
     max_size: Size = field(default=-1, kw_only=True)
     fps: Fps = field(default=-1, kw_only=True)
     vcodec: CodecH264 = field(default="h264", kw_only=True)
@@ -139,10 +168,11 @@ class EncodeMp4(Task):
         print(self)
 
 
-def encode(obj: Any):
+def _encode(obj: Any):
     """Encode a dataclass as a dictionary."""
 
     # Check for dataclass types
+
     if obj in _type_registry.values():
         return {"__type__": obj.__name__}
 
@@ -168,11 +198,8 @@ def encode(obj: Any):
     return obj
 
 
-def decode(obj: Any, key=None):
+def _decode(obj: Any, key=None):
     """Decode a dataclass from a dictionary."""
-
-    if key is None:
-        key = []
 
     if isinstance(obj, Mapping):
         data = {}
@@ -181,7 +208,6 @@ def decode(obj: Any, key=None):
 
         # Recursively decode data
         for k, v in obj.items():
-            key.append(k)
             data[k] = decode(v, key)
 
         # Handle dataclass instances
@@ -203,7 +229,53 @@ def decode(obj: Any, key=None):
     return obj
 
 
+@register_unstructure_hook
+def unstructure_rule(rule: Rule):
+    return {
+        "name": rule.name,
+        "file_type": rule.file_type,
+        "file_extensions": rule.file_extensions,
+        "tasks": [unstructure(t) for t in rule.tasks],
+    }
+
+
+@register_unstructure_hook
+def unstructure_parameterized_task(pt: ParameterizedTask):
+    return {
+        "task_type": pt.task_type.__name__,
+        "parameters": unstructure(pt.parameters),
+    }
+
+
+@register_structure_hook
+def structure_rule(val: Any, _) -> Rule:
+    return Rule(
+        name=val["name"],
+        file_type=val["file_type"],
+        file_extensions=val["file_extensions"],
+        tasks=[structure(t, ParameterizedTask) for t in val["tasks"]],
+    )
+
+
+@register_structure_hook
+def structure_parameterized_task(val: Any, _) -> ParameterizedTask:
+
+    task_type = _task_registry.get(val["task_type"])
+    parameters = {}
+    hints = get_type_hints(task_type)
+    for key, value in val["parameters"].items():
+        hint = hints.get(key)
+        if is_dataclass(hint) and isinstance(value, Mapping):
+            parameters[key] = hint(**value)
+        else:
+            parameters[key] = unstructure(value, hint)
+
+    return ParameterizedTask(task_type, parameters)
+
+
 def main():
+    from rich import print
+
     rule1 = Rule(
         name="Encode File Sequences",
         file_type="FileSequence",
@@ -211,7 +283,7 @@ def main():
         tasks=[
             parameterize(
                 EncodeMp4,
-                input_colorspace=Colorspace("linear"),
+                input_colorspace="linear",
                 max_size=1920,
                 fps=24,
                 vcodec="h264",
@@ -225,7 +297,7 @@ def main():
         tasks=[
             parameterize(
                 EncodeMp4,
-                input_colorspace=Colorspace("rgb"),
+                input_colorspace="rgb",
                 max_size=512,
                 fps=24,
                 vcodec="h264",
@@ -233,16 +305,17 @@ def main():
         ],
     )
     rules = [rule1, rule2]
-    rules_data = encode(rules)
-    rules_round_tripped = decode(rules_data)
+    rules_data = unstructure(rules)
+    print(rules_data)
+    rules_round_tripped = structure(rules_data, list[Rule])
+    print("\n\n\n")
+    print(rules_round_tripped)
 
     for rule in rules_round_tripped:
         for task in rule.tasks:
             task(src=Path("."), dst=Path(".."))
 
-    from rich import print
-
-    print()
+    print("\n\n\n")
     print(rules)
 
 
