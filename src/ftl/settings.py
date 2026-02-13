@@ -9,6 +9,7 @@ USER_SETTINGS = USER_DATA_DIR / "settings.json"
 
 
 class Settings(TypedDict):
+    ffmpeg: str | None
     mov_enabled: bool
     mov_size: int
     mov_fps: int
@@ -26,6 +27,7 @@ class Settings(TypedDict):
 
 def default_settings() -> Settings:
     return {
+        "ffmpeg": None,
         "mov_enabled": True,
         "mov_size": -1,
         "mov_fps": 24,

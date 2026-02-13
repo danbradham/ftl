@@ -3,127 +3,16 @@ from __future__ import annotations
 import enum
 import logging
 import os
-import re
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
 
+from . import tools
+from .files import FileSequence, as_file, ls
 from .settings import Settings, default_settings
 
 PathType = os.PathLike | Path
-
-
-def get_ffmpeg():
-    for path in os.environ["PATH"].split(os.pathsep):
-        candidate = os.path.join(path, "ffmpeg.exe")
-        if os.path.exists(candidate):
-            return candidate
-        candidate = os.path.join(path, "ffmpeg")
-        if os.path.exists(candidate):
-            return candidate
-    raise FileNotFoundError("ffmpeg not found in PATH")
-
-
-def get_ffmpeg_version():
-    try:
-        output = subprocess.check_output([get_ffmpeg(), "-version"], text=True)
-        version = output.splitlines()[0].split()[2]
-        return version
-    except Exception as e:
-        print(f"Error getting ffmpeg version: {e}")
-        return None
-
-
-@dataclass
-class FileSequence:
-    path: PathType
-    name: str
-    stem: str
-    suffix: str
-    padding: int
-    frame_start: int
-    frame_end: int
-    files: list[Path] = field(repr=False, default_factory=list)
-    missing_frames: list[int] = field(default_factory=list)
-
-    def format(self, relative_to: PathType | None = None) -> str:
-        if relative_to:
-            path = self.path.relative_to(Path(relative_to))
-        else:
-            path = self.path
-        result = f"{path.as_posix()} [{self.frame_start}-{self.frame_end}]"
-        if self.missing_frames:
-            result += f"\n  missing {self.missing_frames}"
-        return result
-
-    @classmethod
-    def from_file(cls, file: PathType):
-        file = Path(file)
-        # Check if we're dealing with a file sequence pattern...
-        match = None
-        if matches := re.findall(r"#+", file.as_posix()):
-            match = matches[-1]
-        elif matches := re.findall(r"%\d+d", file.as_posix()):
-            match = matches[-1]
-        elif matches := re.findall(r"\.(\d+)\.", file.as_posix()):
-            match = matches[-1]
-
-        if match:
-            padding = len(match)
-            suffix = file.suffix
-            files = sorted(file.parent.glob(file.name.replace(match, "*")))
-            frames = []
-            frame_re = re.compile(file.as_posix().replace(match, r"(\d+)"))
-            for f in files:
-                if fmatch := frame_re.search(f.as_posix()):
-                    frame = int(fmatch.group(1))
-                    frames.append(frame)
-
-            name = file.name.replace(match, f"%{padding:0>2d}d")
-            stem = file.name.split(match)[0].strip(".")
-            path = file.with_name(name)
-            missing_frames = []
-            prev_frame = frames[0]
-            for frame in frames[1:]:
-                if frame - prev_frame > 1:
-                    missing_frames.extend(range(prev_frame + 1, frame))
-                prev_frame = frame
-
-            return cls(
-                path,
-                name,
-                stem,
-                suffix,
-                padding,
-                frames[0],
-                frames[-1],
-                files,
-                missing_frames,
-            )
-
-        return
-
-
-def get_sequences(folder: PathType) -> list[FileSequence]:
-    """List of all the file sequences in a folder."""
-
-    results = []
-    seen = []
-
-    for file in Path(folder).iterdir():
-        if file in seen:
-            continue
-        if not file.is_file():
-            continue
-
-        seen.append(file)
-        fs = FileSequence.from_file(file)
-        if fs:
-            results.append(fs)
-            seen.extend(fs.files)
-
-    return results
 
 
 class TaskStatus(enum.Enum):
@@ -255,7 +144,7 @@ class EncodeMov(Task):
     def command(self) -> list[str]:
         # fmt: off
         cmd = [
-            get_ffmpeg(),
+            tools.get_ffmpeg(),
             "-r", str(self.fps),
             "-i", str(self.src),
             "-c:v", "prores_ks",
@@ -297,9 +186,9 @@ class EncodeMov(Task):
             ]
 
         # Ensure correct start_number for File Sequences
-        fs = FileSequence.from_file(self.src)
-        if fs:
-            cmd[1:1] = ["-start_number", str(fs.frame_start)]
+        f = as_file(self.src)
+        if isinstance(f, FileSequence):
+            cmd[1:1] = ["-start_number", str(f.frame_start)]
 
         return cmd
 
@@ -337,7 +226,7 @@ class EncodeMp4(Task):
     def command(self) -> list[str]:
         # fmt: off
         cmd = [
-            get_ffmpeg(),
+            tools.get_ffmpeg(),
             "-r", str(self.fps),
             "-i", str(self.src),
             "-pix_fmt", "yuv420p",
@@ -382,9 +271,9 @@ class EncodeMp4(Task):
             ]
 
         # Ensure correct start_number for File Sequences
-        fs = FileSequence.from_file(self.src)
-        if fs:
-            cmd[1:1] = ["-start_number", str(fs.frame_start)]
+        f = as_file(self.src)
+        if isinstance(f, FileSequence):
+            cmd[1:1] = ["-start_number", str(f.frame_start)]
 
         return cmd
 
@@ -432,7 +321,7 @@ class EncodeGif(Task):
 
     def command(self) -> list[str]:
         # fmt: off
-        cmd = [get_ffmpeg(),
+        cmd = [tools.get_ffmpeg(),
             "-i", str(self.src),
             "-y",
             str(self.dst),
@@ -469,9 +358,9 @@ class EncodeGif(Task):
             ]
 
         # Ensure correct start_number for File Sequences
-        fs = FileSequence.from_file(self.src)
-        if fs:
-            cmd[1:1] = ["-start_number", str(fs.frame_start)]
+        f = as_file(self.src)
+        if isinstance(f, FileSequence):
+            cmd[1:1] = ["-start_number", str(f.frame_start)]
 
         return cmd
 
@@ -501,7 +390,7 @@ class EncodeFolder(Task):
     def __init__(self, folder: PathType, settings: Settings) -> None:
         super().__init__()
         self.folder = Path(folder)
-        self.sequences = get_sequences(folder)
+        self.sequences = [f for f in ls(folder) if isinstance(f, FileSequence)]
         self.settings = default_settings()
         self.settings.update(settings)
         self.prepare_tasks()
