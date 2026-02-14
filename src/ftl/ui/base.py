@@ -20,18 +20,13 @@ class Event:
 
 @dataclass
 class Channel:
-    queue: mp.Queue = field(default_factory=mp.Queue)
-
-    def put(self, event: Event):
-        self.queue.put(event)
-
-    def get(self, block=True, timeout=None) -> Any:
-        return self.queue.get(block, timeout)
+    inbox: mp.Queue = field(default_factory=mp.Queue)
+    outbox: mp.Queue = field(default_factory=mp.Queue)
 
 
 class Window(ABC):
-    def __init__(self, *args, **kwargs):
-        self.channel = kwargs.pop("channel", Channel())
+    def __init__(self, *, channel):
+        self.channel = channel
 
     @abstractmethod
     def setup(self):
@@ -39,11 +34,9 @@ class Window(ABC):
 
     def update(self):
         """Perform an action each step of the event loop."""
-        return NotImplemented
 
     def event(self, event: Event):
         """Handle events received on the Windows channel queue."""
-        return NotImplemented
 
     def _handle_event(self, event):
         if event is None:
@@ -57,49 +50,53 @@ class Window(ABC):
 
     def _update(self):
         try:
-            event = self.channel.get(False)
+            event = self.channel.inbox.get(False)
             self._handle_event(event)
         except queue.Empty:
             pass
         self.update()
 
     @classmethod
-    def show(cls, *args, **kwargs):
+    def show(cls, **kwargs):
         """Run the event_loop for this Window in the main thread."""
-        channel = Channel()
-        args = tuple([cls] + list(args))
-        kwargs.setdefault("channel", channel)
-        window = cls(*args, **kwargs)
+
+        kwargs.setdefault("channel", Channel())
+
+        window = cls(**kwargs)
         event_loop(window)
+
         return window
 
     @classmethod
-    def detach(cls, *args, **kwargs):
-        channel = Channel()
-        args = tuple([cls] + list(args))
-        kwargs.setdefault("channel", channel)
-        mp.Process(target=event_loop, args=args, kwargs=kwargs).start()
-        return cls(*args, **kwargs)
+    def detach(cls, *, wait=False, **kwargs):
+
+        kwargs.setdefault("channel", Channel())
+
+        proc = mp.Process(target=event_loop, args=[cls], kwargs=kwargs)
+        proc.start()
+
+        if wait:
+            proc.join()
+
+        return cls(**kwargs)
 
 
-def event_loop(wcls, *args, **kwargs):
+def event_loop(wcls, **kwargs):
     """Start the event_loop for the specified Window class.
 
     Arguments:
-        wid: The window ID.
         wcls: The window class.
-        state: The shared state object.
     """
 
     dpg.create_context()
 
     with dpg.font_registry():
-        font = dpg.add_font(file=const.FONT_FILE, size=14)
+        font = dpg.add_font(file=const.FONT_FILE, size=px(14))
 
     dpg.bind_font(font)
 
     if isclass(wcls):
-        window = wcls(*args, **kwargs)
+        window = wcls(**kwargs)
     else:
         window = wcls
     window.setup()
@@ -135,58 +132,11 @@ def center_viewport(width: int = -1, height: int = -1):
     dpg.set_viewport_pos([x, y])
 
 
-def show_detached(wcls, wid, state, **kwargs):
-    """Create a window in a separate process.
-    Run a dialog in a separate process until it exits.
+def px(*values, cache={}) -> int:
+    if "dpi" not in cache:
+        import tkinter
 
-    Participating classes can set a result on the provided shared state obj
-    using <wid>.
+        cache["dpi"] = int(tkinter.Tk().winfo_fpixels("1i"))
+        cache["factor"] = cache["dpi"] / 96.0
 
-    Returns:
-        dict: The state set by the UI for the given wid.
-    """
-
-    wait = kwargs.get("wait", True)
-
-    proc = mp.Process(
-        target=show,
-        args=(wcls, wid, state),
-        kwargs=kwargs,
-    )
-    proc.start()
-    if wait:
-        proc.join()
-    return state.get(wid, {})
-
-
-def show(wcls, wid, state, **kwargs):
-    """Create a window for the specified class.
-
-    Arguments:
-        wid: The window ID.
-        wcls: The window class.
-        state: The shared state object.
-    """
-
-    dpg.create_context()
-
-    with dpg.font_registry():
-        font = dpg.add_font(file=const.FONT_FILE, size=14)
-
-    dpg.bind_font(font)
-
-    window = wcls(wid, state)
-    render = getattr(window, "render", None)
-
-    dpg.bind_theme(get_theme("main"))
-    dpg.setup_dearpygui()
-    dpg.show_viewport()
-    dpg.set_primary_window("primary", True)
-
-    while dpg.is_dearpygui_running():
-        if render:
-            render()
-
-        dpg.render_dearpygui_frame()
-
-    dpg.destroy_context()
+    return int(values[0] * cache["factor"])

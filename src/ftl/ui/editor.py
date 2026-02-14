@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import dearpygui.dearpygui as dpg
 
 from ftl import const
@@ -8,7 +10,8 @@ from ftl.settings import (
     save_settings,
     sizeStr_to_int,
 )
-from ftl.ui.base import Window, center_viewport
+from ftl.ui.base import Window, center_viewport, px
+from ftl.ui.file_selector import FileSelector
 
 
 class Editor(Window):
@@ -18,18 +21,19 @@ class Editor(Window):
 
     def setup(self):
         settings = get_settings()
+        gap: int = px(20)
 
         dpg.create_viewport(
             title=self.title,
-            width=self.width,
-            height=self.height,
+            width=px(self.width),
+            height=px(self.height),
             large_icon=const.ICON_FILE,
         )
 
         with dpg.window(tag="primary", label="Video Settings"):
             # MOV Controls
             with dpg.collapsing_header(label="1. MOV", leaf=True):
-                with dpg.group(indent=20):
+                with dpg.group(indent=gap):
                     dpg.add_checkbox(
                         label="Enable MOV Output",
                         tag="mov_enabled",
@@ -47,7 +51,7 @@ class Editor(Window):
                         tag="mov_size",
                         default_value=int_to_sizeStr(settings["mov_size"]),
                     )
-                    with dpg.group(horizontal=True, horizontal_spacing=1):
+                    with dpg.group(horizontal=True, horizontal_spacing=px(1)):
                         dpg.add_input_text(
                             label="",
                             tag="mov_folder",
@@ -68,11 +72,11 @@ class Editor(Window):
                             tag="mov_folder_button",
                             callback=lambda: self.browse_for_folder("mov_folder"),
                         )
-                    dpg.add_spacer(height=20)
+                    dpg.add_spacer(height=gap)
 
             # MP4 Controls
             with dpg.collapsing_header(label="2. MP4", leaf=True):
-                with dpg.group(indent=20):
+                with dpg.group(indent=gap):
                     dpg.add_checkbox(
                         label="Enable MP4 Output",
                         tag="mp4_enabled",
@@ -90,7 +94,7 @@ class Editor(Window):
                         tag="mp4_size",
                         default_value=int_to_sizeStr(settings["mp4_size"]),
                     )
-                    with dpg.group(horizontal=True, horizontal_spacing=1):
+                    with dpg.group(horizontal=True, horizontal_spacing=px(1)):
                         dpg.add_input_text(
                             label="",
                             tag="mp4_folder",
@@ -111,11 +115,11 @@ class Editor(Window):
                             tag="mp4_folder_button",
                             callback=lambda: self.browse_for_folder("mp4_folder"),
                         )
-                    dpg.add_spacer(height=20)
+                    dpg.add_spacer(height=gap)
 
             # GIF Controls
             with dpg.collapsing_header(label="3. GIF", leaf=True):
-                with dpg.group(indent=20):
+                with dpg.group(indent=gap):
                     dpg.add_checkbox(
                         label="Enable GIF Output",
                         tag="gif_enabled",
@@ -139,7 +143,7 @@ class Editor(Window):
                         tag="gif_colors",
                         default_value=settings["gif_colors"],
                     )
-                    with dpg.group(horizontal=True, horizontal_spacing=1):
+                    with dpg.group(horizontal=True, horizontal_spacing=px(1)):
                         dpg.add_input_text(
                             label="",
                             tag="gif_folder",
@@ -160,23 +164,23 @@ class Editor(Window):
                             tag="gif_folder_button",
                             callback=lambda: self.browse_for_folder("gif_folder"),
                         )
-                    dpg.add_spacer(height=20)
+                    dpg.add_spacer(height=gap)
 
             dpg.add_button(
                 label="Save",
                 tag="save_button",
                 width=-1,
-                height=32,
+                height=px(32),
                 callback=self.save_callback,
             )
 
         # Center viewport...
-        center_viewport(self.width, self.height)
+        center_viewport(px(self.width), px(self.height))
 
     def browse_for_folder(self, tag):
-        result = FileSelector.get_directory(state=self.state)
+        result = FileSelector.get_directory()
         if result:
-            dpg.set_value(tag, Path(result["file_path_name"]).as_posix())
+            dpg.set_value(tag, Path(result).resolve().as_posix())
 
     def save_callback(self, sender, app_data, user_data):
         form_data: Settings = {
