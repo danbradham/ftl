@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field, is_dataclass
+from pathlib import Path
 from typing import Any, Literal, Mapping, get_type_hints
 
 from cattrs import (
@@ -124,15 +125,14 @@ def main():
         ],
     )
     rules = [rule1, rule2]
+
     rules_data = unstructure(rules)
+    print("\n\n\n")
     print(rules_data)
+
     rules_round_tripped = structure(rules_data, list[Rule])
     print("\n\n\n")
     print(rules_round_tripped)
-
-    for rule in rules_round_tripped:
-        for task in rule.tasks:
-            task(src=as_file("."), dst=as_file("."))
 
     print("\n\n\n")
     print(rules)

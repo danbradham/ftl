@@ -1,19 +1,21 @@
 import subprocess
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Literal
 
 from ftl.files import FileSequence, PathType, as_file
 from ftl.tasks.base import Task
-from ftl.tasks.types import Fps, Size
 from ftl.tools import get_ffmpeg
 
 MaxColors = Literal[4, 8, 16, 32, 64, 128, 256]
+Fps = Literal[8, 12, 15, 24, 25, 30]
+Size = Literal[256, 512, 768, 1024, 2048]
 
 
 @dataclass
 class EncodeGif(Task):
-    src: PathType
-    dst: PathType
+    src: Path
+    dst: Path
     input_colorspace: str = field(default="srgb", kw_only=True)
     fps: Fps = field(default=24, kw_only=True)
     max_size: Size = field(default=768, kw_only=True)

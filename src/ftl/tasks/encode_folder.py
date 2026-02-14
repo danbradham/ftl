@@ -11,7 +11,7 @@ from ftl.tasks.encode_mp4 import EncodeMp4
 
 @dataclass
 class EncodeFolder(Task):
-    folder: PathType = field(default=Path("."))
+    folder: Path = field(default=Path("."))
     settings: Settings = field(default_factory=default_settings)
 
     def __post_init__(self):

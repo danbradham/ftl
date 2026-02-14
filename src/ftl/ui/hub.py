@@ -1,4 +1,5 @@
-import multiprocessing as ms
+import atexit
+import multiprocessing as mp
 from dataclasses import dataclass, field
 from typing import Any
 from uuid import uuid4
@@ -13,10 +14,10 @@ class Event:
 
 class Hub:
     def __init__(self):
-        self.manager = ms.Manager()
+        self.manager = mp.Manager()
         self.proxy = HubProxy(
-            ms.Queue(),
-            ms.Queue(),
+            mp.Queue(),
+            mp.Queue(),
             inboxes=self.manager.dict(),
             outboxes=self.manager.dict(),
         )
@@ -24,21 +25,21 @@ class Hub:
     def create_process(self, id, target, args, kwargs):
         kwargs["proxy"] = self.proxy
         kwargs["id"] = id
-        self.proxy.inboxes[id] = ms.Queue()
-        self.proxy.outboxes[id] = ms.Queue()
-        proc = ms.Process(target, args, kwargs)
+        self.proxy.inboxes[id] = mp.Queue()
+        self.proxy.outboxes[id] = mp.Queue()
+        proc = mp.Process(target, args, kwargs)
         proc.start()
         return proc
 
 
 @dataclass
 class HubProxy:
-    hub_request: ms.Queue[Any]
-    hub_response: ms.Queue[Any]
-    inboxes: dict[str, ms.Queue[Any]]
-    outboxes: dict[str, ms.Queue[Any]]
+    hub_request: mp.Queue[Any]
+    hub_response: mp.Queue[Any]
+    inboxes: dict[str, mp.Queue[Any]]
+    outboxes: dict[str, mp.Queue[Any]]
 
-    def get_inbox(self, id: str) -> ms.Queue:
+    def get_inbox(self, id: str) -> mp.Queue:
         if id in self.inboxes:
             return self.inboxes[id]
 
@@ -47,7 +48,7 @@ class HubProxy:
         self.inboxes[id] = self.hub_response.get()
         return self.inboxes[id]
 
-    def get_outbox(self, id: str) -> ms.Queue:
+    def get_outbox(self, id: str) -> mp.Queue:
         if id in self.outboxes:
             return self.outboxes[id]
 
@@ -69,6 +70,14 @@ class HubProxy:
         kwargs["id"] = id
         self.get_inbox(id)
         self.get_outbox(id)
-        proc = ms.Process(target, args, kwargs)
+        proc = mp.Process(target, args, kwargs)
         proc.start()
         return proc
+
+
+def on_exit():
+    for proc in mp.active_children():
+        proc.join()
+
+
+atexit.register(on_exit)

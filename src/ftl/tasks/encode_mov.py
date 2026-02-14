@@ -1,5 +1,6 @@
 import subprocess
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Literal
 
 from ftl.files import FileSequence, PathType, as_file
@@ -12,8 +13,8 @@ CodecProres = Literal["Prores422", "Prores4444"]
 
 @dataclass
 class EncodeMov(Task):
-    src: PathType
-    dst: PathType
+    src: Path
+    dst: Path
     input_colorspace: str = field(default="srgb", kw_only=True)
     vcodec: CodecProres = field(default="Prores4444", kw_only=True)
     fps: Fps = field(default=-1, kw_only=True)
