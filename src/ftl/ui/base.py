@@ -1,27 +1,120 @@
-import multiprocessing
+import multiprocessing as mp
+import queue
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from inspect import isclass
+from typing import Any
 
 import dearpygui.dearpygui as dpg
 import pyautogui
 
+from ftl import const
 from ftl.ui.theme import get_theme
 
 
 @dataclass
+class Event:
+    type: str
+    payload: dict = field(default_factory=dict)
+
+
+@dataclass
 class Channel:
-    inbox: multiprocessing.Queue
-    output: multiprocessing.Queue
-    broadcast: multiprocessing.Queue
+    queue: mp.Queue = field(default_factory=mp.Queue)
+
+    def put(self, event: Event):
+        self.queue.put(event)
+
+    def get(self, block=True, timeout=None) -> Any:
+        return self.queue.get(block, timeout)
 
 
-class Hub:
-    def __init__(self):
-        self.manager = multiprocessing.Manager()
-        self.channels = self.manager.dict()
-        self.broadcast = self.manager.Queue()
+class Window(ABC):
+    def __init__(self, *args, **kwargs):
+        self.channel = kwargs.pop("channel", Channel())
 
-    def new_channel(self, id):
-        return Channel(multiprocessing.Queue(), multiprocessing.Queue(), self.broadcast)
+    @abstractmethod
+    def setup(self):
+        """Subclasses must implement this method to build the UI."""
+
+    def update(self):
+        """Perform an action each step of the event loop."""
+        return NotImplemented
+
+    def event(self, event: Event):
+        """Handle events received on the Windows channel queue."""
+        return NotImplemented
+
+    def _handle_event(self, event):
+        if event is None:
+            dpg.stop_dearpygui()
+
+        match event.type:
+            case "stop":
+                dpg.stop_dearpygui()
+            case _:
+                self.event(event)
+
+    def _update(self):
+        try:
+            event = self.channel.get(False)
+            self._handle_event(event)
+        except queue.Empty:
+            pass
+        self.update()
+
+    @classmethod
+    def show(cls, *args, **kwargs):
+        """Run the event_loop for this Window in the main thread."""
+        channel = Channel()
+        args = tuple([cls] + list(args))
+        kwargs.setdefault("channel", channel)
+        window = cls(*args, **kwargs)
+        event_loop(window)
+        return window
+
+    @classmethod
+    def detach(cls, *args, **kwargs):
+        channel = Channel()
+        args = tuple([cls] + list(args))
+        kwargs.setdefault("channel", channel)
+        mp.Process(target=event_loop, args=args, kwargs=kwargs).start()
+        return cls(*args, **kwargs)
+
+
+def event_loop(wcls, *args, **kwargs):
+    """Start the event_loop for the specified Window class.
+
+    Arguments:
+        wid: The window ID.
+        wcls: The window class.
+        state: The shared state object.
+    """
+
+    dpg.create_context()
+
+    with dpg.font_registry():
+        font = dpg.add_font(file=const.FONT_FILE, size=14)
+
+    dpg.bind_font(font)
+
+    if isclass(wcls):
+        window = wcls(*args, **kwargs)
+    else:
+        window = wcls
+    window.setup()
+
+    dpg.bind_theme(get_theme("main"))
+    dpg.setup_dearpygui()
+    dpg.show_viewport()
+    dpg.set_primary_window("primary", True)
+
+    while dpg.is_dearpygui_running():
+        window._update()
+
+        dpg.render_dearpygui_frame()
+
+    dpg.destroy_context()
 
 
 def center_viewport(width: int = -1, height: int = -1):
@@ -55,7 +148,7 @@ def show_detached(wcls, wid, state, **kwargs):
 
     wait = kwargs.get("wait", True)
 
-    proc = multiprocessing.Process(
+    proc = mp.Process(
         target=show,
         args=(wcls, wid, state),
         kwargs=kwargs,
