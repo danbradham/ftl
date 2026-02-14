@@ -132,7 +132,7 @@ def main():
 
     for rule in rules_round_tripped:
         for task in rule.tasks:
-            task(file=as_file("."))
+            task(src=as_file("."), dst=as_file("."))
 
     print("\n\n\n")
     print(rules)

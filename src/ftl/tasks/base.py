@@ -98,7 +98,8 @@ class Task(ABC):
     def __post_init__(self):
         errors = validate_task_parameters(self.__class__, self.__dict__)
         if errors:
-            raise ValueError(f"Invalid values: {errors}")
+            lines = "\n".join([f"{k} -> {v}" for k, v in errors.items()])
+            raise ValueError(f"Invalid values:\n {lines}")
 
         self.result = None
         self.error = None
