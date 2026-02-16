@@ -2,7 +2,6 @@ import queue
 
 import dearpygui.dearpygui as dpg
 
-from ftl import const
 from ftl.ui.base import Window, center_viewport, px
 
 
@@ -21,12 +20,6 @@ class FileSelector(Window):
         super().__init__(**kwargs)
 
     def setup(self):
-        dpg.create_viewport(
-            title=self.title,
-            width=px(self.width),
-            height=px(self.height),
-            large_icon=const.ICON_FILE,
-        )
         with dpg.window(tag="primary"):
             dpg.add_file_dialog(tag="dialog", callback=self.callback, **self.options)
 
@@ -44,8 +37,8 @@ class FileSelector(Window):
         dpg.stop_dearpygui()
 
     def resize_callback(self):
-        dpg.set_item_width("dialog", dpg.get_viewport_width() - px(20))
-        dpg.set_item_height("dialog", dpg.get_viewport_height() - px(40))
+        dpg.set_item_width("dialog", dpg.get_viewport_width() - px(10))
+        dpg.set_item_height("dialog", dpg.get_viewport_height() - px(24))
 
     @classmethod
     def get_directory(cls):
@@ -55,3 +48,7 @@ class FileSelector(Window):
             return dialog.channel.outbox.get(False)
         except queue.Empty:
             pass
+
+
+if __name__ == "__main__":
+    result = FileSelector.get_directory()

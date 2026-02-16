@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field, is_dataclass
-from pathlib import Path
 from typing import Any, Literal, Mapping, get_type_hints
 
 from cattrs import (
@@ -20,6 +19,7 @@ class Rule:
     file_type: Literal["File", "FileSequence"]
     file_patterns: list[str]
     tasks: list[ParameterizedTask]
+    description: str = field(default="")
     enabled: bool = field(default=True)
     schema_version: int = field(default=1, metadata={"hidden": True})
 
@@ -93,7 +93,6 @@ def structure_parameterized_task(val: Any, _) -> ParameterizedTask:
 def main():
     from rich import print
 
-    from ftl.files import as_file
     from ftl.tasks import EncodeMp4, parameterize
 
     rule1 = Rule(

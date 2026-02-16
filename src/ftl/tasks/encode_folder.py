@@ -33,6 +33,7 @@ class EncodeFolder(Task):
 
         task_count = 0
         task_groups = []
+        sub_tasks = []
         for seq in self.sequences:
             task_group = []
             if self.settings["mov_enabled"]:
@@ -44,6 +45,7 @@ class EncodeFolder(Task):
                 )
                 task_group.append(mov_task)
                 task_count += 1
+                sub_tasks.append(mov_task)
             if self.settings["mp4_enabled"]:
                 mp4_task = EncodeMp4(
                     src=seq.path,
@@ -53,6 +55,7 @@ class EncodeFolder(Task):
                 )
                 task_group.append(mp4_task)
                 task_count += 1
+                sub_tasks.append(mp4_task)
             if self.settings["gif_enabled"]:
                 gif_task = EncodeGif(
                     src=seq.path,
@@ -63,9 +66,11 @@ class EncodeFolder(Task):
                 )
                 task_group.append(gif_task)
                 task_count += 1
+                sub_tasks.append(gif_task)
 
             task_groups.append(task_group)
 
+        self.sub_tasks = sub_tasks
         self.task_groups = task_groups
         self.task_count = task_count
         self.log.total = task_count
@@ -79,6 +84,7 @@ class EncodeFolder(Task):
         for i, task_group in enumerate(self.task_groups):
             self.log(f"Sequence {i + 1} of {len(self.task_groups)}")
             for task in task_group:
+                self.log(f"  {task}")
                 self.log.step(1)
                 task()
                 results.append(task.result)

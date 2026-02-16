@@ -105,6 +105,7 @@ class Task(ABC):
         self.error = None
         self.status = TaskStatus.PENDING
         self.log = TaskLog(self)
+        self.sub_tasks = []
 
     def __init_subclass__(cls, **kwargs):
         registry.register_task(cls)

@@ -83,23 +83,23 @@ def editor():
     """Launch the Settings Editor..."""
 
     print("Launching Settings...")
-    from ftl.ui import SettingsEditor
+    from ftl.ui.editor import Editor
 
-    SettingsEditor.show()
+    Editor.show()
 
 
 @cli.command()
 def encode(folder: Path = Path("."), recursive: bool = False, max_depth: int = 2):
     """Encode a folder of sequences."""
 
-    from ftl import ui
+    from ftl.ui.progress import ProgressDialog
 
     results = []
     if not recursive:
         task = tasks.EncodeFolder(folder, get_settings())
 
         # Show progress dialog...
-        ui.TaskProgressDialog.from_tasks([t for tg in task.task_groups for t in tg])
+        ProgressDialog.from_tasks([t for tg in task.task_groups for t in tg])
 
         task()
         results.extend(task.result)
@@ -114,13 +114,13 @@ def encode(folder: Path = Path("."), recursive: bool = False, max_depth: int = 2
 
         task_group = []
         sub_tasks = []
-        for i, folder in enumerate(folders):
+        for folder in folders:
             task = tasks.EncodeFolder(folder, get_settings())
-            sub_tasks.extend([t for tg in task.task_groups for t in tg])
+            sub_tasks.extend(task.sub_tasks)
             task_group.append(task)
 
         # Show progress dialog...
-        ui.TaskProgressDialog.from_tasks(sub_tasks)
+        ProgressDialog.from_tasks(sub_tasks)
 
         for task in task_group:
             task()

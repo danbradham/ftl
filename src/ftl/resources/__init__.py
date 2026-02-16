@@ -9,3 +9,7 @@ else:
 
 def get(name):
     return path / name
+
+
+def ls(ext: str):
+    return path.glob(f"*.{ext}")

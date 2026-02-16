@@ -23,13 +23,6 @@ class Editor(Window):
         settings = get_settings()
         gap: int = px(20)
 
-        dpg.create_viewport(
-            title=self.title,
-            width=px(self.width),
-            height=px(self.height),
-            large_icon=const.ICON_FILE,
-        )
-
         with dpg.window(tag="primary", label="Video Settings"):
             # MOV Controls
             with dpg.collapsing_header(label="1. MOV", leaf=True):

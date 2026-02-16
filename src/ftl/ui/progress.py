@@ -1,12 +1,9 @@
-import queue
-
 import dearpygui.dearpygui as dpg
 
-from ftl import const
 from ftl.ui.base import Event, Window, center_viewport, px
 
 
-class TaskProgressDialog(Window):
+class ProgressDialog(Window):
     title = "Progress"
     width = 400
     height = 100
@@ -14,13 +11,10 @@ class TaskProgressDialog(Window):
     def setup(self):
         self.exit_after = None
 
-        dpg.create_viewport(
-            title=self.title,
-            width=px(self.width),
-            height=px(self.height),
+        dpg.configure_viewport(
+            item=self.primary_window,
             resizable=False,
             decorated=False,
-            large_icon=const.ICON_FILE,
         )
         with dpg.window(tag="primary", width=px(self.width), height=px(self.height)):
             dpg.add_text("Perparing Tasks", tag="label")
@@ -34,7 +28,7 @@ class TaskProgressDialog(Window):
         # Centered on screen.
         center_viewport(px(self.width), px(self.height))
 
-    def close(self, delay=10):
+    def close(self, delay=1):
         self.exit_after = dpg.get_total_time() + delay
 
     def cancel(self):
@@ -52,8 +46,8 @@ class TaskProgressDialog(Window):
             case _:
                 dpg.set_value("label", f"Unknown event type: {event.type}")
 
-        if message := event.payload.get("message"):
-            dpg.set_value("label", message)
+        if label := event.payload.get("label"):
+            dpg.set_value("label", label)
 
     def update(self):
         if self.exit_after and dpg.get_total_time() > self.exit_after:
@@ -65,14 +59,16 @@ class TaskProgressDialog(Window):
         total_tasks = len(tasks)
 
         def log_handler(event):
+            """Converts Task log records to UI Events."""
+
             task = event.get("task")
             type = event.get("type")
             if type != "progress":
                 return
 
             t = float(sum([t.log.t for t in tasks])) / float(total_tasks)
-            message = f"Encoding {tasks.index(task) + 1} of {total_tasks}"
-            new_event = Event(event["event"], {"message": message, "t": t})
+            label = f"Encoding {tasks.index(task) + 1} of {total_tasks}"
+            new_event = Event(event["event"], {"label": label, "t": t})
             if t < 1.0:
                 new_event.type = "step"
 
