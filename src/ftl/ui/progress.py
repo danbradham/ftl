@@ -1,6 +1,7 @@
 import dearpygui.dearpygui as dpg
 
 from ftl.ui.base import Event, Window, center_viewport, px
+from ftl.ui.theme import set_theme
 
 
 class ProgressDialog(Window):
@@ -27,6 +28,9 @@ class ProgressDialog(Window):
 
         # Centered on screen.
         center_viewport(px(self.width), px(self.height))
+
+    def after_show(self):
+        set_theme(self.primary_window, "modal")
 
     def close(self, delay=1):
         self.exit_after = dpg.get_total_time() + delay

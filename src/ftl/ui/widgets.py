@@ -235,7 +235,11 @@ class RuleEditor(base.Window):
                         dpg.add_text("Match Video: *.mov *.mp4 *.avi")
                         dpg.add_text("Match ACEScg files: *acescg*")
 
-                    self.tasks_list = TasksList(tag="editor_tasks_list", label="Tasks")
+                    self.tasks_list = TasksList(
+                        tag="editor_tasks_list",
+                        label="Tasks",
+                        callback=lambda: setattr(self, "unsaved_changes", True),
+                    )
 
                 set_font("edit_rules_options", "s", "light")
                 set_font(self.tasks_list.tag, "p", "light")
@@ -383,6 +387,7 @@ class RuleEditor(base.Window):
 class TaskItem:
     task: ParameterizedTask
     row: int | str
+    parameters: dict[str, int | str]
 
 
 @dataclass
@@ -405,15 +410,6 @@ class TasksList:
                     dpg.add_button(label="Add Task")
                     add_tasks_menu("add_task_menu", self.on_add_task)
             base.add_separator()
-            # self.body = dpg.add_child_window(
-            #     tag=f"{self.tag}_body",
-            #     parent=self.tag,
-            #     horizontal_scrollbar=False,
-            #     autosize_x=True,
-            #     autosize_y=False,
-            #     auto_resize_y=True,
-            #     border=False,
-            # )
             self.list = dpg.add_table(
                 header_row=False,
                 borders_innerH=False,
@@ -430,10 +426,14 @@ class TasksList:
         dpg.configure_item(self.tag, parent=tag, after=after, show=True)
 
     def set_rule(self, rule):
-        self.clear()
-        self.rule = rule
-        for task in rule.tasks:
-            self.add_task(task)
+        if rule != self.rule:
+            self.clear()
+            self.rule = rule
+            for task in rule.tasks:
+                self.add_task(task)
+        else:
+            for task in rule.tasks:
+                self.update_task(task)
 
     def show(self):
         dpg.configure_item(self.tag, show=True)
@@ -448,6 +448,17 @@ class TasksList:
         if self.rule:
             self.rule = None
 
+    def update_task(self, task):
+        item = self.get_task_item(task)
+        if not item:
+            warning(f"No Item for task: {task}")
+            return
+        for name, value in task.parameters.items():
+            try:
+                dpg.set_value(item.parameters[name], value)
+            except KeyError:
+                continue
+
     def remove_task(self, sender, app_data, user_data):
         for item in list(self.items):
             if item.task == user_data:
@@ -457,15 +468,26 @@ class TasksList:
         if user_data in self.rule.tasks:
             self.rule.tasks.remove(user_data)
 
+    def get_task_item(self, task):
+        for item in self.items:
+            if item.task == task:
+                return item
+
     def add_task(self, task):
-        parameters = task.get_parameters()
         tag = f"task_{task.name}"
+        parameter_items = {}
 
         with base.parent(self.list):
             row = dpg.add_table_row(tag=f"{tag}_row", user_data=task)
 
             with base.parent(row):
-                dpg.add_checkbox(tag=f"{tag}_enabled", label="")
+                enabled = dpg.add_checkbox(
+                    tag=f"{tag}_enabled",
+                    label="",
+                    user_data=(task, "enabled"),
+                    callback=self.on_parameter_changed,
+                )
+                parameter_items["enabled"] = enabled
                 with dpg.collapsing_header(
                     tag=f"{tag}_parameters",
                     label=task.name,
@@ -473,39 +495,46 @@ class TasksList:
                     user_data=task,
                 ):
                     with dpg.group():
-                        for name, param in parameters.items():
-                            default = None
-                            if param.default != _MISSING_TYPE:
-                                default = param.default
-                            hint = get_origin(param.type)
+                        for name, param in task.get_parameters().items():
+                            # Get value from parameter
+                            # or default from dataclass field
+                            value = task.parameters.get(name)
+                            if value is None and param.default != _MISSING_TYPE:
+                                value = param.default
 
+                            # We already made the enabled widget
+                            # since we want it to be first
                             if name == "enabled":
-                                dpg.set_value(f"{tag}_enabled", default)
+                                dpg.set_value(f"{tag}_enabled", value)
                                 continue
 
-                            id = None
+                            # Setup item kwargs
+                            item_tag = f"{tag}_{name}"
+                            item_kwargs = dict(
+                                tag=item_tag,
+                                label=name,
+                                user_data=(task, name),
+                                callback=self.on_parameter_changed,
+                                default_value=value,
+                            )
+                            item_id = None
+
+                            # TODO - this inner loop into an item factor func
+                            hint = get_origin(param.type)
                             if hint == Literal:
-                                options = get_args(param.type)
-                                id = dpg.add_combo(
-                                    tag=f"{tag}_{name}",
-                                    label=name,
-                                    items=options,
-                                    default_value=default,
-                                )
+                                item_kwargs["items"] = get_args(param.type)
+                                item_id = dpg.add_combo(**item_kwargs)
                             elif param.type is str:
-                                id = dpg.add_input_text(
-                                    tag=f"{tag}_{name}",
-                                    label=name,
-                                    default_value=default,
-                                )
+                                item_id = dpg.add_input_text(**item_kwargs)
                             else:
                                 warning(f"Unsupported Parameter type: {param.type}")
 
-                            if id:
-                                set_font(id, "s", "light")
+                            if item_id:
+                                parameter_items[name] = item_id
+                                set_font(item_id, "s", "light")
                 dpg.add_button(label="delete", callback=self.remove_task, user_data=task)
 
-        self.items.append(TaskItem(task, row))
+        self.items.append(TaskItem(task, row, parameter_items))
 
     def on_add_task(self, sender, app_data, user_data):
         task = parameterize(user_data)
@@ -514,6 +543,15 @@ class TasksList:
 
         self.rule.tasks.append(task)
         self.add_task(task)
+        if self.callback:
+            self.callback()
+
+    def on_parameter_changed(self, sender, app_data, user_data):
+        task, name = user_data
+        value = app_data
+        task.parameters[name] = value
+        if self.callback:
+            self.callback()
 
 
 def add_tasks_menu(tag: int | str, callback: Callable):

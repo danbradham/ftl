@@ -196,6 +196,11 @@ def get_theme(name="main"):
                     corner_radius,
                     category=dpg.mvThemeCat_Core,
                 )
+                dpg.add_theme_style(
+                    dpg.mvStyleVar_FrameRounding,
+                    corner_radius,
+                    category=dpg.mvThemeCat_Core,
+                )
         themes[name] = theme
 
     if name == "rules_list":
