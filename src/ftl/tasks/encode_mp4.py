@@ -13,8 +13,8 @@ CodecH264 = Literal["h264", "h265", "vp9"]
 
 @dataclass
 class EncodeMp4(Task):
-    src: Path
-    dst: Path
+    src: Path = field(metadata={"hidden": True})
+    dst: Path = field(metadata={"hidden": True})
     input_colorspace: str = field(default="srgb", kw_only=True)
     vcodec: CodecH264 = field(default="h264", kw_only=True)
     fps: Fps = field(default=-1, kw_only=True)

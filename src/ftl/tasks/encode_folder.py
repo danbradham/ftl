@@ -11,6 +11,7 @@ from ftl.tasks.encode_mp4 import EncodeMp4
 
 @dataclass
 class EncodeFolder(Task):
+    hidden = True
     folder: Path = field(default=Path("."))
     settings: Settings = field(default_factory=default_settings)
 

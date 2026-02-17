@@ -13,8 +13,8 @@ CodecProres = Literal["Prores422", "Prores4444"]
 
 @dataclass
 class EncodeMov(Task):
-    src: Path
-    dst: Path
+    src: Path = field(metadata={"hidden": True})
+    dst: Path = field(metadata={"hidden": True})
     input_colorspace: str = field(default="srgb", kw_only=True)
     vcodec: CodecProres = field(default="Prores4444", kw_only=True)
     fps: Fps = field(default=-1, kw_only=True)

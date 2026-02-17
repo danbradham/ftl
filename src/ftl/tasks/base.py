@@ -93,6 +93,7 @@ class Task(ABC):
     ```
     """
 
+    hidden = False
     enabled: bool = field(default=True)
 
     def __post_init__(self):
@@ -108,6 +109,7 @@ class Task(ABC):
         self.sub_tasks = []
 
     def __init_subclass__(cls, **kwargs):
+        cls.name = cls.__name__
         registry.register_task(cls)
 
     def __call__(self):
@@ -122,10 +124,6 @@ class Task(ABC):
             self.status = TaskStatus.FAILURE
             self.log.emit_record(type="error", message="Task Failed.", error=e)
             raise
-
-    @property
-    def name(self):
-        return self.__class__.__name__
 
     def start(self):
         """Called internally just before `run`."""
@@ -173,6 +171,9 @@ class ParameterizedTask:
     task_type: Type[Task]
     parameters: dict = field(default_factory=dict)
 
+    def __post_init__(self):
+        self.name = self.task_type.name
+
     def __call__(self, *args, **kwargs) -> Any:
         kwargs = dict(self.parameters, **kwargs)
         task = self.task_type(*args, **kwargs)
@@ -183,7 +184,7 @@ class ParameterizedTask:
         for param in fields(self.task_type):
             if exclude_hidden and param.metadata.get("hidden", False):
                 continue
-            parameters[param.name] = getattr(self.task_type, param.name)
+            parameters[param.name] = param
         return parameters
 
 
