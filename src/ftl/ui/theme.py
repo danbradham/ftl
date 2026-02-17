@@ -62,7 +62,7 @@ def px(value: int) -> int:
 
 def set_font(
     item,
-    style: Literal["h1", "h2", "h3", "p", "s"],
+    style: Literal["h1", "h2", "h3", "p", "s"] = "p",
     weight: Literal["light", "regular", "bold", "italic", "bold_italic"] = "regular",
 ):
     """Set the font for an item."""
@@ -131,11 +131,6 @@ def get_theme(name="main"):
                 dpg.add_theme_style(
                     dpg.mvStyleVar_ChildRounding,
                     corner_radius,
-                    category=dpg.mvThemeCat_Core,
-                )
-                dpg.add_theme_style(
-                    dpg.mvStyleVar_ScrollbarSize,
-                    px(4),
                     category=dpg.mvThemeCat_Core,
                 )
             with dpg.theme_component(dpg.mvButton):

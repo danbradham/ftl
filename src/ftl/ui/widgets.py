@@ -82,7 +82,9 @@ class RuleEditor(base.Window):
                         width=px(200),
                         height=-1,
                     )
-                    self.right = dpg.add_child_window(tag="right_column", label="Body")
+                    self.right = dpg.add_child_window(
+                        tag="right_column", label="Body", height=-1, width=-1
+                    )
 
         self.setup_rules_list()
         self.setup_welcome_screen()
@@ -167,7 +169,7 @@ class RuleEditor(base.Window):
         self.clear_body()
         with base.parent(self.right):
             with dpg.child_window(tag="body", width=-1, border=False):
-                with dpg.group(tag="edit_rules_header", horizontal=True):
+                with dpg.group(tag="edit_rules_header", horizontal=True, width=-1):
                     dpg.add_text("Editing")
                     dpg.add_text(tag="edit_rules_label", label="")
                     set_font("edit_rules_label", "p", "bold_italic")
@@ -179,7 +181,7 @@ class RuleEditor(base.Window):
 
                 base.add_separator()
 
-                with dpg.group(tag="edit_rules_options"):
+                with dpg.group(tag="edit_rules_options", width=-1):
                     dpg.add_checkbox(
                         tag="enabled",
                         label="Enabled",
