@@ -181,20 +181,32 @@ class RuleEditor(base.Window):
 
                 base.add_separator()
 
-                with dpg.group(tag="edit_rules_options", width=-1):
+                with dpg.group(tag="edit_rules_options"):
                     dpg.add_checkbox(
                         tag="enabled",
                         label="Enabled",
                         callback=self.on_rule_changed,
                     )
                     dpg.add_input_text(
-                        tag="name", label="Name", callback=self.on_rule_changed
+                        tag="name",
+                        label="Name",
+                        callback=self.on_rule_changed,
+                        hint="enter a name",
                     )
+                    with dpg.tooltip("name", delay=0.4):
+                        dpg.add_text(
+                            "The name of this Rule!",
+                        )
                     dpg.add_input_text(
                         tag="description",
                         label="Description",
+                        hint="enter a description",
                         callback=self.on_rule_changed,
                     )
+                    with dpg.tooltip("description", delay=0.4):
+                        dpg.add_text(
+                            "Describe this Rule's pattern and tasks.",
+                        )
                     dpg.add_combo(
                         tag="file_type",
                         label="File Type",
