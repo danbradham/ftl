@@ -12,6 +12,7 @@ from ftl.settings import (
 )
 from ftl.ui.base import Window, center_viewport, px
 from ftl.ui.file_selector import FileSelector
+from ftl.ui.theme import set_font
 
 
 class Editor(Window):
@@ -169,6 +170,7 @@ class Editor(Window):
 
         # Center viewport...
         center_viewport(px(self.width), px(self.height))
+        set_font(self.primary_window, "s", "light")
 
     def browse_for_folder(self, tag):
         result = FileSelector.get_directory()
