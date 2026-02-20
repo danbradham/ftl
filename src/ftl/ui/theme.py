@@ -79,8 +79,6 @@ def set_theme(item, name):
 def get_theme(name="main"):
     """Get a theme by name."""
 
-    # return dpg.add_theme()
-
     if name in themes:
         return themes[name]
 

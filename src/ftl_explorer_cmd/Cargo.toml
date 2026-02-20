@@ -1,0 +1,19 @@
+[package]
+name = "ftl_explorer_cmd"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "ftl_explorer_cmd"
+crate-type = ["cdylib"]
+path="lib.rs"
+
+[dependencies]
+platform-dirs = "0.3.0"
+windows = { version = "0.56", features = [
+    "Win32_UI_Shell",
+    "Win32_System_Com",
+    "Win32_Foundation"
+] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"

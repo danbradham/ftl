@@ -1,0 +1,24 @@
+{
+  "commands": [
+    {
+      "id": "ftl.menu",
+      "label": "FTL",
+      "verb": "ftl.menu",
+      "icon": "D:/dev/projects/ftl/src/ftl/resources/ftl.ico",
+      "subcommands": [
+        {
+          "id": "encode.folder",
+          "label": "Encode",
+          "verb": "encode.folder",
+          "icon": "D:/dev/projects/ftl/src/ftl/resources/encode.ico"
+        },
+        {
+          "id": "encode.folder.recursive",
+          "label": "Encode Recursive",
+          "verb": "encode.folder.recursive",
+          "icon": "D:/dev/projects/ftl/src/ftl/resources/encode.ico"
+        }
+      ]
+    }
+  ]
+}
