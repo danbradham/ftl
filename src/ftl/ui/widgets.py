@@ -5,25 +5,11 @@ from typing import Callable, Literal, get_args, get_origin
 import dearpygui.dearpygui as dpg
 
 from ftl.rules import Rule
-from ftl.tasks import EncodeMp4, parameterize
+from ftl.settings import get_settings, save_settings
+from ftl.tasks import parameterize
 from ftl.tasks.base import ParameterizedTask
 from ftl.ui import base
 from ftl.ui.theme import get_theme, px, set_font, set_theme
-
-rule = Rule(
-    name="Encode File",
-    file_type="FileSequence",
-    file_patterns=["*"],
-    tasks=[
-        parameterize(
-            EncodeMp4,
-            input_colorspace="linear",
-            max_size=1920,
-            fps=24,
-            vcodec="h264",
-        )
-    ],
-)
 
 
 @dataclass
@@ -90,6 +76,11 @@ class RuleEditor(base.Window):
         self.setup_welcome_screen()
         self.setup_exit_callback()
         base.center_viewport(px(self.width), px(self.height))
+        self.load_rules()
+
+    def load_rules(self):
+        settings = get_settings()
+        self.add_rules(settings.get("rules", []))
 
     def setup_exit_callback(self):
         dpg.configure_viewport(0, disable_close=True)
@@ -334,6 +325,7 @@ class RuleEditor(base.Window):
         rule = user_data
         rule.enabled = app_data
         self.on_rule_updated(rule)
+        self.unsaved_changes = True
 
     def on_add_rule(self, sender, app_data, user_data):
         for i in range(100):
@@ -377,8 +369,11 @@ class RuleEditor(base.Window):
 
     def save_rules(self, *args):
         self.unsaved_changes = False
-        # TODO Save rules to disk
-        ...
+
+        # Merge rules from dialog with settings and save...
+        settings = get_settings()
+        settings["rules"] = self.rules
+        save_settings(settings)
 
     def after_show(self): ...
 
