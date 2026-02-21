@@ -5,9 +5,14 @@ build/
 dist/
 wheels/
 *.egg-info
+.pytest_cache
 
 # Virtual environments
 .venv
 
+# My files
 data/
 TODO.md
+
+# Rust
+target/
