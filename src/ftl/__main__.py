@@ -86,15 +86,12 @@ def reset():
 
 
 @cli.command()
-def settings(json: bool = True):
+def settings():
     """Show current settings..."""
     from ftl.rules import unstructure
 
     settings = get_settings()
-    if json:
-        print(unstructure(settings))
-    else:
-        print(settings)
+    print(unstructure(settings))
 
 
 @cli.command()
@@ -102,7 +99,7 @@ def editor():
     """Launch the Settings Editor..."""
 
     print("Launching Settings...")
-    from ftl.ui.widgets import RuleEditor
+    from ftl.ui.editor import RuleEditor
 
     RuleEditor.show()
 
