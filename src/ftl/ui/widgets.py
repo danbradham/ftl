@@ -359,6 +359,7 @@ class RuleEditor(base.Window):
         self.add_rule_to_list(rule)
         if select:
             self.set_rule(rule)
+            dpg.focus_item("name")
 
     def remove_rule(self, rule):
         for item in list(self.rule_items):
