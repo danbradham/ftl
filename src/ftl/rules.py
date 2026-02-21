@@ -50,6 +50,7 @@ class Rule:
 def unstructure_rule(rule: Rule):
     return {
         "name": rule.name,
+        "description": rule.description,
         "file_type": rule.file_type,
         "file_patterns": rule.file_patterns,
         "enabled": rule.enabled,
@@ -69,6 +70,8 @@ def unstructure_parameterized_task(pt: ParameterizedTask):
 @register_structure_hook
 def structure_rule(val: Any, _) -> Rule:
     return Rule(
+        enabled=val.get("enabled", True),
+        description=val.get("description", ""),
         name=val["name"],
         file_type=val["file_type"],
         file_patterns=val["file_patterns"],
@@ -90,53 +93,36 @@ def structure_parameterized_task(val: Any, _) -> ParameterizedTask:
     return ParameterizedTask(task_type, parameters)
 
 
-def main():
-    from rich import print
+def default_rules() -> list[Rule]:
+    from ftl.tasks import EncodeGif, EncodeMov, EncodeMp4, parameterize
 
-    from ftl.tasks import EncodeMp4, parameterize
-
-    rule1 = Rule(
-        name="Encode File",
-        file_type="FileSequence",
-        file_patterns=["*.mov"],
-        tasks=[
-            parameterize(
-                EncodeMp4,
-                input_colorspace="linear",
-                max_size=1920,
-                fps=24,
-                vcodec="h264",
-            )
-        ],
+    encode_mov = parameterize(
+        EncodeMov,
+        input_colorspace="linear",
+        fps=-1,
+        max_size=3840,
+        vcodec="prores4444",
     )
-    rule2 = Rule(
-        name="Encode File Sequences",
-        file_type="FileSequence",
-        file_patterns=["*"],
-        tasks=[
-            parameterize(
-                EncodeMp4,
-                input_colorspace="rgb",
-                max_size=512,
-                fps=24,
-                vcodec="h264",
-            )
-        ],
+    encode_mp4 = parameterize(
+        EncodeMp4,
+        input_colorspace="srgb",
+        fps=-1,
+        max_size=1920,
+        vcodec="h264",
     )
-    rules = [rule1, rule2]
+    encode_gif = parameterize(
+        EncodeGif,
+        input_colorspace="linear",
+        fps=-1,
+        max_size=1024,
+        max_colors=64,
+    )
 
-    rules_data = unstructure(rules)
-    print("\n\n\n")
-    print(rules_data)
-
-    rules_round_tripped = structure(rules_data, list[Rule])
-    print("\n\n\n")
-    print(rules_round_tripped)
-
-    print("\n\n\n")
-    print(rules)
-    assert rules == rules_round_tripped
-
-
-if __name__ == "__main__":
-    main()
+    return [
+        Rule(
+            name="Encode Sequences",
+            file_type="FileSequence",
+            file_patterns=["*"],
+            tasks=[encode_mov, encode_mp4, encode_gif],
+        ),
+    ]
