@@ -1,7 +1,7 @@
 import dearpygui.dearpygui as dpg
 
-from ftl.ui.base import Event, Window, center_viewport, px
-from ftl.ui.theme import set_theme
+from ftl.ui.core import Event, Window, center_viewport
+from ftl.ui.theme import px, set_theme
 
 
 class ProgressDialog(Window):

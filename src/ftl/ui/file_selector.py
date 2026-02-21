@@ -2,7 +2,8 @@ import queue
 
 import dearpygui.dearpygui as dpg
 
-from ftl.ui.base import Window, center_viewport, px
+from ftl.ui.core import Window, center_viewport
+from ftl.ui.theme import px
 
 
 class FileSelector(Window):
