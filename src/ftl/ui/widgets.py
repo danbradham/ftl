@@ -1,6 +1,7 @@
 from dataclasses import _MISSING_TYPE, dataclass, field
 from logging import warning
-from typing import Callable, Literal, get_args, get_origin
+from pathlib import Path
+from typing import Any, Callable, Literal, get_args, get_origin
 
 import dearpygui.dearpygui as dpg
 
@@ -347,6 +348,7 @@ class RuleEditor(base.Window):
     def on_del_rule(self, confirm):
         if confirm.accepted:
             self.remove_rule(self.rule)
+        self.unsaved_changes = True
 
     def add_rules(self, rules: list[Rule]):
         for rule in rules:
@@ -376,6 +378,48 @@ class RuleEditor(base.Window):
         save_settings(settings)
 
     def after_show(self): ...
+
+
+def PathParameter(tag, label: str, user_data: Any, callback: Callable, default_value="."):
+    """Construct a PathParameter"""
+
+    group = dpg.add_group(horizontal=True, horizontal_spacing=1)
+
+    def browse_for_folder():
+        from ftl.ui.file_selector import FileSelector
+
+        path = FileSelector.get_directory()
+        if path:
+            dpg.set_value(tag, path)
+            callback(group, path, user_data)
+
+    def set_path(path):
+        dpg.set_value(tag, path)
+        callback(group, path, user_data)
+
+    with base.parent(group):
+        dpg.add_input_text(
+            label="",
+            tag=tag,
+            default_value=default_value,
+        )
+        dpg.add_button(
+            label=".",
+            tag=f"{tag}_cwd_button",
+            callback=lambda: set_path("."),
+        )
+        dpg.add_button(
+            label="..",
+            tag=f"{tag}_parent_button",
+            callback=lambda: set_path(".."),
+        )
+        dpg.add_button(
+            label="Folder",
+            tag=f"{tag}_folder_button",
+            callback=browse_for_folder,
+        )
+
+    return group
 
 
 @dataclass
@@ -516,9 +560,12 @@ class TasksList:
 
                             # TODO - this inner loop into an item factor func
                             hint = get_origin(param.type)
+                            args = get_args(param.type)
                             if hint == Literal:
-                                item_kwargs["items"] = get_args(param.type)
+                                item_kwargs["items"] = args
                                 item_id = dpg.add_combo(**item_kwargs)
+                            elif Path in args:
+                                item_id = PathParameter(**item_kwargs)
                             elif param.type is str:
                                 item_id = dpg.add_input_text(**item_kwargs)
                             else:

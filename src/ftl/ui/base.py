@@ -5,6 +5,7 @@ import queue
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from inspect import isclass
+from logging import warning
 from typing import Callable
 from uuid import uuid4
 
@@ -33,7 +34,11 @@ RIGHT = 2
 def on_exit():
     # Send a stop event to each window.
     for win in state["child_windows"]:
-        win.stop()
+        try:
+            win.stop()
+        except Exception as e:
+            warning(e)
+            continue
 
     # Join to allow them time to stop on their own.
     for proc in mp.active_children():

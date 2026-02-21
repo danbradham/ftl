@@ -31,9 +31,10 @@ class Settings(TypedDict):
 
 def default_settings() -> Settings:
     from ftl.rules import default_rules
+    from ftl.tools import get_ffmpeg
 
     return {
-        "ffmpeg": None,
+        "ffmpeg": get_ffmpeg(ignore_settings=True),
         "rules": default_rules(),
     }
 

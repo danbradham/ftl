@@ -62,7 +62,7 @@ def unstructure_rule(rule: Rule):
 @register_unstructure_hook
 def unstructure_parameterized_task(pt: ParameterizedTask):
     return {
-        "task_type": pt.task_type.__name__,
+        "task": pt.task.__name__,
         "parameters": unstructure(pt.parameters),
     }
 
@@ -81,38 +81,41 @@ def structure_rule(val: Any, _) -> Rule:
 
 @register_structure_hook
 def structure_parameterized_task(val: Any, _) -> ParameterizedTask:
-    task_type = registry.types.get(val["task_type"])
+    task = registry.types.get(val["task"])
     parameters = {}
-    hints = get_type_hints(task_type)
+    hints = get_type_hints(task)
     for key, value in val["parameters"].items():
         hint = hints.get(key)
         if is_dataclass(hint) and isinstance(value, Mapping):
             parameters[key] = hint(**value)
         else:
             parameters[key] = unstructure(value, hint)
-    return ParameterizedTask(task_type, parameters)
+    return ParameterizedTask(task, parameters)
 
 
 def default_rules() -> list[Rule]:
+    """Get the default Rules."""
+
     from ftl.tasks import EncodeGif, EncodeMov, EncodeMp4, parameterize
 
     encode_mov = parameterize(
         EncodeMov,
-        input_colorspace="linear",
+        enabled=True,
+        folder="..",
         fps=-1,
         max_size=3840,
-        vcodec="prores4444",
     )
     encode_mp4 = parameterize(
         EncodeMp4,
-        input_colorspace="srgb",
+        enabled=True,
+        folder="..",
         fps=-1,
         max_size=1920,
-        vcodec="h264",
     )
     encode_gif = parameterize(
         EncodeGif,
-        input_colorspace="linear",
+        enabled=True,
+        folder="..",
         fps=-1,
         max_size=1024,
         max_colors=64,

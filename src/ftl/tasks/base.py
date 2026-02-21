@@ -168,20 +168,20 @@ def validate_task_parameters(
 @registry.register_type
 @dataclass
 class ParameterizedTask:
-    task_type: Type[Task]
+    task: Type[Task]
     parameters: dict = field(default_factory=dict)
 
     def __post_init__(self):
-        self.name = self.task_type.name
+        self.name = self.task.name
 
     def __call__(self, *args, **kwargs) -> Any:
         kwargs = dict(self.parameters, **kwargs)
-        task = self.task_type(*args, **kwargs)
+        task = self.task(*args, **kwargs)
         return task()
 
     def get_parameters(self, exclude_hidden: bool = True) -> dict[str, Any]:
         parameters = {}
-        for param in fields(self.task_type):
+        for param in fields(self.task):
             if exclude_hidden and param.metadata.get("hidden", False):
                 continue
             parameters[param.name] = param

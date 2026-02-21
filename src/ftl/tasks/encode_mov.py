@@ -14,24 +14,30 @@ CodecProres = Literal["Prores422", "Prores4444"]
 @dataclass
 class EncodeMov(Task):
     src: Path = field(metadata={"hidden": True})
-    dst: Path = field(metadata={"hidden": True})
-    input_colorspace: str = field(default="srgb", kw_only=True)
-    vcodec: CodecProres = field(default="Prores4444", kw_only=True)
+    dst: Path = field(init=False, metadata={"hidden": True})
+    folder: Path | str = field(default=".")
+    input_colorspace: str = field(default="srgb", kw_only=True, metadata={"hidden": True})
+    vcodec: CodecProres = field(
+        default="Prores4444",
+        kw_only=True,
+        metadata={"hidden": True},
+    )
     fps: Fps = field(default=-1, kw_only=True)
     max_size: Size = field(default=-1, kw_only=True)
 
     def command(self) -> list[str]:
         # fmt: off
+        is_4444 = self.vcodec.lower() == "prores4444"
         cmd = [
             get_ffmpeg(),
             "-r", str(self.fps),
             "-i", str(self.src),
             "-c:v", "prores_ks",
-            "-profile:v", "4444",
+            "-profile:v", ("422", "4444")[is_4444],
             "-qscale:v", "11",
             "-vendor", "apl0",
-            "-pix_fmt", "yuva444p10le",
-            "-alpha_bits", "16",
+            "-pix_fmt", ("yuv422p10le", "yuva444p10le")[is_4444],
+            ((), ("-alpha_bits", "16"))[is_4444],
             "-color_range", "tv",
             "-colorspace", "bt709",
             "-color_primaries", "bt709",

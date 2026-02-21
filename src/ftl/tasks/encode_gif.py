@@ -15,8 +15,9 @@ Size = Literal[256, 512, 768, 1024, 2048]
 @dataclass
 class EncodeGif(Task):
     src: Path = field(metadata={"hidden": True})
-    dst: Path = field(metadata={"hidden": True})
-    input_colorspace: str = field(default="srgb", kw_only=True)
+    dst: Path = field(init=False, metadata={"hidden": True})
+    folder: Path | str = field(default=".")
+    input_colorspace: str = field(default="srgb", kw_only=True, metadata={"hidden": True})
     fps: Fps = field(default=24, kw_only=True)
     max_size: Size = field(default=768, kw_only=True)
     max_colors: MaxColors = field(default=256, kw_only=True)

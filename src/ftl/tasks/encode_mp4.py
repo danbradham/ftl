@@ -8,15 +8,16 @@ from ftl.tasks.base import Task
 from ftl.tasks.types import Fps, Size
 from ftl.tools import get_ffmpeg
 
-CodecH264 = Literal["h264", "h265", "vp9"]
+CodecH264 = Literal["h264"]
 
 
 @dataclass
 class EncodeMp4(Task):
     src: Path = field(metadata={"hidden": True})
-    dst: Path = field(metadata={"hidden": True})
-    input_colorspace: str = field(default="srgb", kw_only=True)
-    vcodec: CodecH264 = field(default="h264", kw_only=True)
+    dst: Path = field(init=False, metadata={"hidden": True})
+    folder: Path | str = field(default=".")
+    input_colorspace: str = field(default="srgb", kw_only=True, metadata={"hidden": True})
+    vcodec: CodecH264 = field(default="h264", kw_only=True, metadata={"hidden": True})
     fps: Fps = field(default=-1, kw_only=True)
     max_size: Size = field(default=-1, kw_only=True)
 
