@@ -41,6 +41,18 @@ cli = typer.Typer()
 def _set(key: str, value: str):
     """Set the value of a Setting..."""
 
+    if key.startswith("rule"):
+        top_level_settings = [
+            s for s in list(Settings.__annotations__.keys()) if not s.startswith("rule")
+        ]
+        print(
+            "Settings Rules from the CLI is unsupported.\n"
+            "Use [bold]'ftl editor'[/bold] instead.\n\n"
+        )
+        print("The following settings can be set from the CLI:")
+        print(top_level_settings)
+        raise typer.Exit(code=1)
+
     value = safe_eval(value)
 
     key_type = Settings.__annotations__.get(key)
@@ -66,9 +78,11 @@ def _set(key: str, value: str):
 def reset():
     """Reset to defaults..."""
 
-    save_settings(default_settings())
+    defaults = default_settings()
+    save_settings(defaults)
+
     print("Reset to defaults...")
-    print(default_settings())
+    print(defaults)
 
 
 @cli.command()
@@ -83,9 +97,9 @@ def editor():
     """Launch the Settings Editor..."""
 
     print("Launching Settings...")
-    from ftl.ui.editor import Editor
+    from ftl.ui.widgets import RuleEditor
 
-    Editor.show()
+    RuleEditor.show()
 
 
 @cli.command()
@@ -178,13 +192,13 @@ def version():
 
     from importlib.metadata import version
 
-    from ftl import tasks
+    from ftl import tools
 
     # Get ffmpeg info
     ffmpeg_version = "N/A"
     try:
-        ffmpeg_executable = tasks.get_ffmpeg().replace("\\", "/")
-        ffmpeg_version = tasks.get_ffmpeg_version()
+        ffmpeg_executable = tools.get_ffmpeg().replace("\\", "/")
+        ffmpeg_version = tools.get_ffmpeg_version()
     except Exception:
         ffmpeg_executable = "FFMPEG not found..."
 
