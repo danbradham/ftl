@@ -14,13 +14,54 @@ Size = Literal[256, 512, 768, 1024, 2048]
 
 @dataclass
 class EncodeGif(Task):
-    src: Path = field(metadata={"hidden": True})
-    dst: Path = field(init=False, metadata={"hidden": True})
-    folder: Path | str = field(default=".")
-    input_colorspace: str = field(default="srgb", kw_only=True, metadata={"hidden": True})
-    fps: Fps = field(default=24, kw_only=True)
-    max_size: Size = field(default=768, kw_only=True)
-    max_colors: MaxColors = field(default=256, kw_only=True)
+    src: Path = field(
+        metadata={
+            "hidden": True,
+            "help": "The source Path to encode, could be a FileSequence or File.",
+        }
+    )
+    dst: Path = field(
+        init=False,
+        metadata={
+            "hidden": True,
+            "help": "The Path to the output GIF.",
+        },
+    )
+    folder: Path | str = field(
+        default=".",
+        metadata={
+            "help": "The folder to output the GIF to relative to the source files."
+        },
+    )
+    input_colorspace: str = field(
+        default="srgb",
+        kw_only=True,
+        metadata={
+            "hidden": True,
+            "help": "The colorspace of the source media.",
+        },
+    )
+    fps: Fps = field(
+        default=24,
+        kw_only=True,
+        metadata={
+            "help": "The frame rate of the output GIF.",
+        },
+    )
+    max_size: Size = field(
+        default=768,
+        kw_only=True,
+        metadata={
+            "help": "The maximum width or height of the output GIF.",
+        },
+    )
+    max_colors: MaxColors = field(
+        default=256,
+        kw_only=True,
+        metadata={
+            "help": "The maximum number of colors of the output GIF.",
+        },
+    )
 
     def command(self) -> list[str]:
         # fmt: off

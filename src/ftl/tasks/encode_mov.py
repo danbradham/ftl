@@ -13,17 +13,55 @@ CodecProres = Literal["Prores422", "Prores4444"]
 
 @dataclass
 class EncodeMov(Task):
-    src: Path = field(metadata={"hidden": True})
-    dst: Path = field(init=False, metadata={"hidden": True})
-    folder: Path | str = field(default=".")
-    input_colorspace: str = field(default="srgb", kw_only=True, metadata={"hidden": True})
+    src: Path = field(
+        metadata={
+            "hidden": True,
+            "help": "The source Path to encode, could be a FileSequence or File.",
+        }
+    )
+    dst: Path = field(
+        init=False,
+        metadata={
+            "hidden": True,
+            "help": "The Path to the output MOV.",
+        },
+    )
+    folder: Path | str = field(
+        default=".",
+        metadata={
+            "help": "The folder to output the MOV to relative to the source files."
+        },
+    )
+    input_colorspace: str = field(
+        default="srgb",
+        kw_only=True,
+        metadata={
+            "hidden": True,
+            "help": "The colorspace of the source media.",
+        },
+    )
     vcodec: CodecProres = field(
         default="Prores4444",
         kw_only=True,
-        metadata={"hidden": True},
+        metadata={
+            "hidden": True,
+            "help": "The video codec of the output MOV.",
+        },
     )
-    fps: Fps = field(default=-1, kw_only=True)
-    max_size: Size = field(default=-1, kw_only=True)
+    fps: Fps = field(
+        default=-1,
+        kw_only=True,
+        metadata={
+            "help": "The framerate of the output MOV.",
+        },
+    )
+    max_size: Size = field(
+        default=-1,
+        kw_only=True,
+        metadata={
+            "help": "The maximum width or height of the output MOV.",
+        },
+    )
 
     def command(self) -> list[str]:
         # fmt: off

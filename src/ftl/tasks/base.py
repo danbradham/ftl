@@ -168,6 +168,11 @@ def validate_task_parameters(
 @registry.register_type
 @dataclass
 class ParameterizedTask:
+    """A Task wrapper.
+
+    This allows Tasks' to be configured / serialized to be called later.
+    """
+
     task: Type[Task]
     parameters: dict = field(default_factory=dict)
 
@@ -189,6 +194,6 @@ class ParameterizedTask:
 
 
 def parameterize(task: Type[Task], **parameters):
-    """Return a task as a ParameterizedTask."""
+    """Wrap a Task in a ParameterizedTask."""
 
     return ParameterizedTask(task, parameters)
