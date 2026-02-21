@@ -25,25 +25,7 @@ class Rule:
 
     @classmethod
     def from_dict(cls, data):
-        schema_version = data.get("schema_version", cls.schema_version)
-        if schema_version > cls.schema_version:
-            raise ValueError(
-                f"This version of FTL only supports "
-                f"Rule.schema_version <= {cls.schema_version}"
-            )
-        # Apply Schema Migrations here.
-        # - Apply cascading upgrades...
-        # - If a migration can not fully maintain the behavior
-        #   or a previous rule. Set data["enabled"] = False.
-        #   This will allow users to complete the changes.
-        # if schema_version == 1:
-        #     ...
-        #     data["schema_version"] = 2
-        # if schema_version == 2:
-        #     ...
-        #     data["schema_version"] = 3
-        if schema_version == cls.schema_version:
-            return cls(**data)
+        return structure(data, cls)
 
 
 @register_unstructure_hook
@@ -69,6 +51,25 @@ def unstructure_parameterized_task(pt: ParameterizedTask):
 
 @register_structure_hook
 def structure_rule(val: Any, _) -> Rule:
+    schema_version = val.get("schema_version", Rule.schema_version)
+    if schema_version > Rule.schema_version:
+        raise ValueError(
+            f"This version of FTL only supports "
+            f"Rule.schema_version <= {Rule.schema_version}"
+        )
+
+    # Apply Schema Migrations here.
+    # - Apply cascading upgrades...
+    # - If a migration can not fully maintain the behavior
+    #   or a previous rule. Set data["enabled"] = False.
+    #   This will allow users to complete the changes.
+    # if schema_version == 1:
+    #     ...
+    #     data["schema_version"] = 2
+    # if schema_version == 2:
+    #     ...
+    #     data["schema_version"] = 3
+
     return Rule(
         enabled=val.get("enabled", True),
         description=val.get("description", ""),
@@ -116,7 +117,7 @@ def default_rules() -> list[Rule]:
         EncodeGif,
         enabled=True,
         folder="..",
-        fps=-1,
+        fps=24,
         max_size=1024,
         max_colors=64,
     )
