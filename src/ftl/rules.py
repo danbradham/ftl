@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field, is_dataclass
+from fnmatch import fnmatch
 from typing import Any, Literal, Mapping, get_type_hints
 
 from cattrs import (
@@ -9,6 +10,7 @@ from cattrs import (
 )
 
 from ftl import registry
+from ftl.files import File, FileSequence
 from ftl.tasks import ParameterizedTask
 
 
@@ -22,6 +24,12 @@ class Rule:
     description: str = field(default="")
     enabled: bool = field(default=True)
     schema_version: int = field(default=1, metadata={"hidden": True})
+
+    def accepts(self, file):
+        file_type = (File, FileSequence)[self.file_type == "FileSequence"]
+        is_file_type = isinstance(file, file_type)
+        has_pattern_match = any([fnmatch(file.name, pat) for pat in self.file_patterns])
+        return is_file_type and has_pattern_match
 
     @classmethod
     def from_dict(cls, data):
@@ -103,14 +111,14 @@ def default_rules() -> list[Rule]:
         EncodeMov,
         enabled=True,
         folder="..",
-        fps=-1,
+        fps=24,
         max_size=3840,
     )
     encode_mp4 = parameterize(
         EncodeMp4,
         enabled=True,
         folder="..",
-        fps=-1,
+        fps=24,
         max_size=1920,
     )
     encode_gif = parameterize(

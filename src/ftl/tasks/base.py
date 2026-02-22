@@ -9,6 +9,7 @@ from typing import Any, Callable, Mapping, Type, get_type_hints
 from typeguard import TypeCheckError, check_type
 
 from ftl import registry
+from ftl.files import File, FileSequence
 
 missing = object()
 
@@ -95,6 +96,19 @@ class Task(ABC):
 
     hidden = False
     enabled: bool = field(default=True)
+    input: File | FileSequence = field(
+        metadata={
+            "hidden": True,
+            "help": "The source File or FileSequence to encode.",
+        }
+    )
+    # output: Path = field(
+    #     init=False,
+    #     metadata={
+    #         "hidden": True,
+    #         "help": "The output path of the encoded file. This should be set by the Task in __post_init__ or within the run method.",
+    #     },
+    # )
 
     def __post_init__(self):
         errors = validate_task_parameters(self.__class__, self.__dict__)
@@ -125,6 +139,8 @@ class Task(ABC):
             self.log.emit_record(type="error", message="Task Failed.", error=e)
             raise
 
+        return self.result
+
     def start(self):
         """Called internally just before `run`."""
         self.status = TaskStatus.RUNNING
@@ -136,7 +152,7 @@ class Task(ABC):
         self.log.add_handler(handler)
 
     def remove_handler(self, handler: Callable[[dict], Any]):
-        """Remvoe a handler."""
+        """Remove a handler."""
 
         self.log.remove_handler(handler)
 

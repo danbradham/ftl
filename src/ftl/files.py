@@ -89,48 +89,44 @@ class FileSequence:
             match = matches[-1]
         elif matches := re.findall(r"\.(\d+)\.", file.as_posix()):
             match = matches[-1]
+        else:
+            return
 
-        if match:
-            padding = len(match)
-            suffix = file.suffix
-            files = sorted(file.parent.glob(file.name.replace(match, "*")))
-            frames = []
-            frame_re = re.compile(file.as_posix().replace(match, r"(\d+)"))
-            for f in files:
-                if fmatch := frame_re.search(f.as_posix()):
-                    frame = int(fmatch.group(1))
-                    frames.append(frame)
+        padding = len(match)
+        suffix = file.suffix
+        files = sorted(file.parent.glob(file.name.replace(match, "*")))
+        frames = []
+        frame_re = re.compile(file.as_posix().replace(match, r"(\d+)"))
+        for f in files:
+            if fmatch := frame_re.search(f.as_posix()):
+                frame = int(fmatch.group(1))
+                frames.append(frame)
 
-            name = file.name.replace(match, f"%{padding:0>2d}d")
-            stem = file.name.split(match)[0].strip(".")
-            path = file.with_name(name)
-            missing_frames = []
-            prev_frame = frames[0]
-            for frame in frames[1:]:
-                if frame - prev_frame > 1:
-                    missing_frames.extend(range(prev_frame + 1, frame))
-                prev_frame = frame
+        name = file.name.replace(match, f"%{padding:0>2d}d")
+        stem = file.name.split(match)[0].strip(".")
+        path = file.with_name(name)
+        missing_frames = []
+        prev_frame = frames[0]
+        for frame in frames[1:]:
+            if frame - prev_frame > 1:
+                missing_frames.extend(range(prev_frame + 1, frame))
+            prev_frame = frame
 
-            return cls(
-                path,
-                name,
-                stem,
-                suffix,
-                padding,
-                frames[0],
-                frames[-1],
-                files,
-                missing_frames,
-            )
-
-        return
+        return cls(
+            path,
+            name,
+            stem,
+            suffix,
+            padding,
+            frames[0],
+            frames[-1],
+            files,
+            missing_frames,
+        )
 
 
 def as_file(file: PathType):
-    result = FileSequence.from_file(file)
-    if not result:
-        result = File.from_file(file)
-    return result
+    return FileSequence.from_file(file) or File.from_file(file)
 
 
 def ls(folder: PathType, max_depth: int = 1) -> list[File | FileSequence]:

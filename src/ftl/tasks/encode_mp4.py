@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
-from ftl.files import FileSequence, PathType, as_file
+from ftl.files import FileSequence, PathType
 from ftl.tasks.base import Task
 from ftl.tasks.types import Fps, Size
 from ftl.tools import get_ffmpeg
@@ -13,19 +13,6 @@ CodecH264 = Literal["h264"]
 
 @dataclass
 class EncodeMp4(Task):
-    src: Path = field(
-        metadata={
-            "hidden": True,
-            "help": "The source Path to encode, could be a FileSequence or File.",
-        }
-    )
-    dst: Path = field(
-        init=False,
-        metadata={
-            "hidden": True,
-            "help": "The Path to the output Mp4.",
-        },
-    )
     folder: Path | str = field(
         default=".",
         metadata={
@@ -63,12 +50,18 @@ class EncodeMp4(Task):
         },
     )
 
+    def __post_init__(self):
+        super().__post_init__()
+        self.output = (
+            self.input.path.parent / self.folder / (self.input.stem + ".mp4")
+        ).resolve()
+
     def command(self) -> list[str]:
         # fmt: off
         cmd = [
             get_ffmpeg(),
             "-r", str(self.fps),
-            "-i", str(self.src),
+            "-i", str(self.input.path),
             "-pix_fmt", "yuv420p",
             "-c:v", "libx264",
             "-x264-params", "bframes=14:ref=12",
@@ -83,14 +76,14 @@ class EncodeMp4(Task):
             "-color_primaries", "bt709",
             "-color_trc", "iec61966-2-1",
             "-y",
-            str(self.dst),
+            str(self.output),
         ]
         # fmt: on
 
         # Filter Graph
         # Colorspace
         filters = []
-        if self.src.suffix == ".exr":
+        if self.input.suffix == ".exr":
             filters.append(
                 "colorspace=space=bt709:primaries=bt709:trc=srgb:ispace=bt709:iprimaries=bt709:itrc=linear"
             )
@@ -111,20 +104,19 @@ class EncodeMp4(Task):
             ]
 
         # Ensure correct start_number for File Sequences
-        f = as_file(self.src)
-        if isinstance(f, FileSequence):
-            cmd[1:1] = ["-start_number", str(f.frame_start)]
+        if isinstance(self.input, FileSequence):
+            cmd[1:1] = ["-start_number", str(self.input.frame_start)]
 
         return cmd
 
     def run(self) -> PathType:
 
         # Ensure destination directory exists...
-        self.dst.parent.mkdir(parents=True, exist_ok=True)
+        self.output.parent.mkdir(parents=True, exist_ok=True)
 
         cmd = self.command()
 
-        self.log(f"  MP4: {self.src.name} -> {self.dst.name}")
+        self.log(f"  MP4: {self.input.name} -> {self.output.name}")
         self.log(f"  CMD: {' '.join(cmd)}\n")
 
         try:
@@ -138,4 +130,4 @@ class EncodeMp4(Task):
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"FFmpeg failed with error code {e.returncode}") from e
 
-        return self.dst
+        return self.output
