@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Literal
 
 from ftl.files import FileSequence, PathType
-from ftl.tasks.base import Task
+from ftl.tasks.core import Task
 from ftl.tools import get_ffmpeg
 
 MaxColors = Literal[4, 8, 16, 32, 64, 128, 256]
@@ -105,8 +105,8 @@ class EncodeGif(Task):
         self.output.parent.mkdir(parents=True, exist_ok=True)
 
         cmd = self.command()
-        self.log(f"  GIF: {self.input.name} -> {self.output.name}")
-        self.log(f"  CMD: {' '.join(cmd)}\n")
+        self.log.debug(f"  GIF: {self.input.name} -> {self.output.name}")
+        self.log.debug(f"  CMD: {' '.join(cmd)}")
 
         try:
             subprocess.run(

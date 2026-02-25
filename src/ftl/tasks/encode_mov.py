@@ -4,9 +4,9 @@ from pathlib import Path
 from typing import Literal
 
 from ftl.files import FileSequence, PathType
-from ftl.tasks.base import Task
-from ftl.tasks.types import Fps, Size
+from ftl.tasks.core import Task
 from ftl.tools import get_ffmpeg
+from ftl.types import Fps, Size
 
 CodecProres = Literal["Prores422", "Prores4444"]
 
@@ -113,8 +113,8 @@ class EncodeMov(Task):
 
         cmd = self.command()
 
-        self.log(f"  MOV: {self.input.name} -> {self.output.name}")
-        self.log(f"  CMD: {' '.join(cmd)}\n")
+        self.log.debug(f"  MOV: {self.input.name} -> {self.output.name}")
+        self.log.debug(f"  CMD: {' '.join(cmd)}")
 
         try:
             subprocess.run(

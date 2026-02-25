@@ -8,7 +8,7 @@ import dearpygui.dearpygui as dpg
 from ftl.rules import Rule
 from ftl.settings import get_settings, save_settings
 from ftl.tasks import parameterize
-from ftl.tasks.base import ParameterizedTask
+from ftl.tasks.core import ParameterizedTask
 from ftl.ui import core
 from ftl.ui.dialogs import ConfirmDialog
 from ftl.ui.theme import get_theme, px, set_font, set_theme

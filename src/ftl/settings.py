@@ -64,6 +64,10 @@ def get_settings() -> Settings:
     return settings
 
 
+def get_rules() -> list["Rule"]:
+    return get_settings().get("rules", [])
+
+
 def int_to_sizeStr(value):
     if value <= 0:
         return "original"

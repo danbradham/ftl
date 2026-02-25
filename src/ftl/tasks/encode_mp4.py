@@ -4,9 +4,9 @@ from pathlib import Path
 from typing import Literal
 
 from ftl.files import FileSequence, PathType
-from ftl.tasks.base import Task
-from ftl.tasks.types import Fps, Size
+from ftl.tasks.core import Task
 from ftl.tools import get_ffmpeg
+from ftl.types import Fps, Size
 
 CodecH264 = Literal["h264"]
 
@@ -116,8 +116,8 @@ class EncodeMp4(Task):
 
         cmd = self.command()
 
-        self.log(f"  MP4: {self.input.name} -> {self.output.name}")
-        self.log(f"  CMD: {' '.join(cmd)}\n")
+        self.log.debug(f"  MP4: {self.input.name} -> {self.output.name}")
+        self.log.debug(f"  CMD: {' '.join(cmd)}")
 
         try:
             subprocess.run(

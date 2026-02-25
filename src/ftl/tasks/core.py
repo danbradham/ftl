@@ -1,82 +1,21 @@
 from __future__ import annotations
 
-import enum
-import logging
+import sys
+import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field, fields
-from typing import Any, Callable, Mapping, Type, get_type_hints
+from time import sleep
+from typing import Any, Mapping, Type, get_type_hints
 
 from typeguard import TypeCheckError, check_type
 
 from ftl import registry
 from ftl.files import File, FileSequence
+from ftl.logging import Log
+from ftl.signals import Signals
+from ftl.types import Status
 
 missing = object()
-
-
-class TaskStatus(enum.Enum):
-    PENDING = "pending"
-    RUNNING = "running"
-    SUCCESS = "success"
-    FAILURE = "failure"
-
-
-@dataclass
-class TaskEvent:
-    task_id: str
-    task_type: str
-    task_status: TaskStatus
-    type: str
-
-
-@dataclass()
-class TaskLog:
-    task: Task
-    total: int = field(default=100)
-    value: int = field(default=0)
-    t: float = field(default=0.0)
-    records: list[dict[str, Any]] = field(default_factory=list, repr=False)
-    logger: logging.Logger = field(init=False, repr=False)
-    handlers: set[Callable[[dict]]] = field(default_factory=set, repr=False)
-
-    def __post_init__(self):
-        self.logger = logging.getLogger(f"{__name__}.{self.task.name}>")
-
-    def __call__(self, message: str, **extra: Any):
-        self.emit_record(type="log", message=message, **extra)
-        self.logger.info(message)
-
-    def start(self, **extra: Any):
-        self.emit_record(type="progress", event="start", message=None, **extra)
-
-    def step(self, amount: int, message: str | None = None, **extra: Any):
-        self.value = min(self.value + amount, self.total)
-        self.t = float(self.value) / float(self.total)
-        if message:
-            self.logger.info(f"{self.t:.0%} | {message}")
-
-        event = ("step", "finished")[self.t == 1.0]
-        self.emit_record(type="progress", event=event, message=message, **extra)
-
-    def emit_record(self, **fields: Any):
-        record = dict(
-            task=self.task,
-            name=self.task.name,
-            status=self.task.status,
-            total=self.total,
-            value=self.value,
-            t=self.t,
-        )
-        record.update(fields)
-        self.records.append(record)
-        for handler in self.handlers:
-            handler(record)
-
-    def add_handler(self, fn: Callable[[dict], Any]):
-        self.handlers.add(fn)
-
-    def remove_handler(self, fn: Callable[[dict], Any]):
-        self.handlers.remove(fn)
 
 
 @dataclass(kw_only=True)
@@ -95,6 +34,7 @@ class Task(ABC):
     """
 
     hidden = False
+    id: str = field(default_factory=lambda: uuid.uuid4().hex)
     enabled: bool = field(default=True)
     input: File | FileSequence = field(
         metadata={
@@ -116,11 +56,26 @@ class Task(ABC):
             lines = "\n".join([f"{k} -> {v}" for k, v in errors.items()])
             raise ValueError(f"Invalid values:\n {lines}")
 
+        # Setup Task Logger
+        self.log = Log(name=f"ftl.task.{self.id}", record_type="task")
+        self.log.add_filter(self.prepare_record)
+
+        # Define some signals
+        self.signals = Signals()
+        self.signals.define("status_changed", "Task status has changed.")
+        self.signals.define("started", "Task has started running.")
+        self.signals.define("completed", "Task has completed.")
+
+        # Define Task state
+        self.status: Status = Status.PENDING
+        self.status_request: Status | None = None
+        self.progress = 0
         self.result = None
         self.error = None
-        self.status = TaskStatus.PENDING
-        self.log = TaskLog(self)
         self.sub_tasks = []
+
+        # Call setup if defined
+        self.setup()
 
     def __init_subclass__(cls, **kwargs):
         cls.name = cls.__name__
@@ -128,33 +83,69 @@ class Task(ABC):
 
     def __call__(self):
         """Start and run the Task."""
+
+        self.set_status(Status.RUNNING, 0)
         try:
-            self.start()
+            if self.status_request in (Status.CANCELLED, Status.REVOKED):
+                return self.accept(self.status_request)
             self.result = self.run()
-            self.status = TaskStatus.SUCCESS
-            self.log.step(self.log.total, "Task Completed.")
-        except Exception as e:
-            self.error = e
-            self.status = TaskStatus.FAILURE
-            self.log.emit_record(type="error", message="Task Failed.", error=e)
+            self.set_status(Status.SUCCESS, 100)
+        except Exception:
+            self.error = sys.exc_info()
+            self.set_status(Status.FAILED)
+            self.log.exception("Task failed...")
             raise
 
         return self.result
 
-    def start(self):
-        """Called internally just before `run`."""
-        self.status = TaskStatus.RUNNING
-        self.log.start()
+    def prepare_record(self, record):
+        """Add context to logging records."""
 
-    def add_handler(self, handler: Callable[[dict], Any]):
-        """Add a handler, a function that receives all log records from the Task."""
+        record.task_id = self.id
+        record.task_name = self.name
+        record.task_status = self.status
+        record.task_status_request = self.status_request
+        record.task_progress = self.progress
+        record.task_result = self.result
+        record.task_error = self.error
 
-        self.log.add_handler(handler)
+    # Public Interface
+    def set_status(self, status: Status, progress: int | None = None):
+        payload = {
+            "type": "status_changed",
+            "scope": "task",
+            "id": self.id,
+            "name": self.name,
+            "status": status,
+            "prev_status": self.status,
+            "progress": progress or self.progress,
+        }
+        self.status = payload["status"]
+        self.progress = payload["progress"]
+        if payload["status"] != payload["prev_status"]:
+            self.log.info(
+                "Status changed from "
+                f"{payload['prev_status'].upper()} to {payload['status'].upper()}."
+            )
+            self.signals.send("status_changed", payload)
 
-    def remove_handler(self, handler: Callable[[dict], Any]):
-        """Remove a handler."""
+    def request(self, status):
+        self.log.debug(f"{status.upper()} requested...")
+        self.status_request = status
 
-        self.log.remove_handler(handler)
+    def accept(self, status):
+        self.log.debug(f"{status.upper()} accepted...")
+        self.set_status(status)
+        self.status_request = None
+
+    def wait(self):
+        while self.status not in Status.DONE:
+            sleep(0.1)
+        return self.status
+
+    # Subclassing Interface
+    def setup(self):
+        return NotImplemented
 
     @abstractmethod
     def run(self) -> Any:

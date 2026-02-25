@@ -25,6 +25,10 @@ class Rule:
     enabled: bool = field(default=True)
     schema_version: int = field(default=1, metadata={"hidden": True})
 
+    @property
+    def fname(self):
+        return self.name.lower().replace(" ", "_")
+
     def accepts(self, file):
         file_type = (File, FileSequence)[self.file_type == "FileSequence"]
         is_file_type = isinstance(file, file_type)
