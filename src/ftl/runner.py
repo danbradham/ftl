@@ -36,10 +36,7 @@ class RunnerInvocation:
 
         # Define signals
         self.signals.define("status_changed", "Task status has changed.")
-        self.signals.define("rule_changed", "Rule has begun processing.")
         self.signals.define("progress_changed", "Progress value has changed.")
-        self.signals.define("started", "Task has started running.")
-        self.signals.define("completed", "Task has completed.")
 
     def prepare_record(self, record):
         # Add run status to record
