@@ -139,8 +139,7 @@ class Runner:
 
         # Prepare invocation
         # Generates all the tasks and info surrounding the run
-        # this will enable some better introspection and
-        # progress tracking.
+        # this enables introspection and progress tracking.
         inv = self._prepare_run(files)
 
         inv.log.info(f"Starting Run with {inv.tasks_count} tasks.")
@@ -154,7 +153,16 @@ class Runner:
                 for task_idx, task in enumerate(rule_map["tasks"]):
                     inv.current_task = task_idx
                     inv.log.info(f"{task.input.name} -> {task.output.name}")
-                    inv.artifacts.append(task())
+                    try:
+                        task_result = task()
+                        inv.artifacts.append(task_result)
+                    except Exception:
+                        inv.set_status(Status.FAILED)
+                        break
+
+            if inv.status == Status.FAILED:
+                inv.log.error(f"Cancelling run due to failed task.\n\n{task}\n\n")
+                return inv
 
         inv.set_status(Status.SUCCESS)
 

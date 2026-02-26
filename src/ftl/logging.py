@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import logging
+import re
 from contextlib import contextmanager
 from dataclasses import dataclass, field
+
+from rich.style import Style
 
 
 @contextmanager
@@ -68,6 +71,29 @@ class HandlerFunction(logging.Handler):
 
 
 class RichFormatter(logging.Formatter):
+    styles = {
+        "pending": (
+            Style(color="yellow", bold=True),
+            re.compile(r"PENDING"),
+        ),
+        "running": (
+            Style(color="blue", bold=True),
+            re.compile(r"RUNNING"),
+        ),
+        "success": (
+            Style(color="green"),
+            re.compile(r"SUCCESS"),
+        ),
+        "failed": (
+            Style(color="red"),
+            re.compile(r"FAILED"),
+        ),
+        "revoked": (
+            Style(color="purple"),
+            re.compile(r"REVOKED"),
+        ),
+    }
+
     # fmt: off
     formatters = {
         "runner": logging.Formatter("%(message)s"),
@@ -77,6 +103,13 @@ class RichFormatter(logging.Formatter):
     }
     # fmt: on
 
+    def apply_styles(self, msg):
+        for style, pattern in self.styles.values():
+            for match in pattern.finditer(msg):
+                substr = match.group()
+                msg = msg.replace(substr, style.render(substr))
+        return msg
+
     def format(self, record):
         formatter = self.formatters.get(record.type, self.formatters["default"])
-        return formatter.format(record)
+        return self.apply_styles(formatter.format(record))
