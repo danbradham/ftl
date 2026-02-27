@@ -56,11 +56,17 @@ class Task(ABC):
             "help": "The source File or FileSequence to encode.",
         }
     )
-    # output: Path = field(
+    # output: Any = field(
+    #     default=None,
     #     init=False,
     #     metadata={
     #         "hidden": True,
-    #         "help": "The output path of the encoded file. This should be set by the Task in __post_init__ or within the run method.",
+    #         "help": (
+    #             "The output the Task is expected to produce. "
+    #             "Can be any type like a Path or just a String description. "
+    #             "Subclasses should initialize this in a __post_init__ method."
+    #         ),
+    #         "validate": False,
     #     },
     # )
 
@@ -106,8 +112,8 @@ class Task(ABC):
             self.set_status(Status.SUCCESS, 100)
         except Exception:
             self.error = sys.exc_info()
-            self.set_status(Status.FAILED)
             self.log.exception("Task failed...")
+            self.set_status(Status.FAILED)
             raise
 
         return self.result

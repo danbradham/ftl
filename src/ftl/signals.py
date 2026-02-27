@@ -11,8 +11,10 @@ class Event:
 
 @dataclass
 class Signals:
-    map: dict[str, set[Callable]] = field(default_factory=lambda: defaultdict(set))
-    docs: dict[str, str | None] = field(default_factory=dict)
+    map: dict[str, set[Callable]] = field(
+        default_factory=lambda: defaultdict(set), init=False
+    )
+    docs: dict[str, str | None] = field(default_factory=dict, init=False)
 
     def define(self, name: str, description: str | None = None):
         """Define and describe a new signal."""
@@ -39,6 +41,11 @@ class Signals:
         event = Event(name, payload or {})
         for handler in self.map[name]:
             handler(event)
+
+    def describe(self):
+        """Return a dictionary of signal names and their descriptions."""
+
+        return self.docs.copy()
 
 
 # Define global signals api
@@ -67,3 +74,9 @@ def send(name: str, payload: dict | None = None):
     """Send an event with a payload."""
 
     _global_signals.send(name, payload)
+
+
+def describe():
+    """Return a dictionary of signal names and their descriptions."""
+
+    return _global_signals.describe()

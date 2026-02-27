@@ -1,4 +1,3 @@
-import os
 import sys
 from ast import literal_eval
 from pathlib import Path
@@ -7,7 +6,6 @@ import typer
 from rich import print
 
 from ftl import files as fs
-from ftl import tasks
 from ftl.settings import Settings, default_settings, get_settings, save_settings
 
 
@@ -108,42 +106,20 @@ def editor():
 def encode(folder: Path = Path("."), recursive: bool = False, max_depth: int = 2):
     """Encode a folder of sequences."""
 
+    from ftl.files import ls
+    from ftl.runner import Runner
+    from ftl.settings import get_rules
     from ftl.ui.progress import ProgressDialog
 
-    results = []
-    if not recursive:
-        task = tasks.EncodeFolder(folder, get_settings())
-
-        # Show progress dialog...
-        ProgressDialog.from_tasks([t for tg in task.task_groups for t in tg])
-
-        task()
-        results.extend(task.result)
-
-    else:
-        folders = set()
-        for root, subdirs, _ in os.walk(folder, topdown=True):
-            if str(Path(root).relative_to(folder)).count(os.sep) >= max_depth:
-                subdirs[:] = []
-            files = (f for f in fs.ls(Path(root)) if isinstance(f, fs.FileSequence))
-            folders |= set(f.path.parent for f in files)
-
-        task_group = []
-        sub_tasks = []
-        for folder in folders:
-            task = tasks.EncodeFolder(folder, get_settings())
-            sub_tasks.extend(task.sub_tasks)
-            task_group.append(task)
-
-        # Show progress dialog...
-        ProgressDialog.from_tasks(sub_tasks)
-
-        for task in task_group:
-            task()
-            results.extend(task.result)
+    runner = Runner(
+        rules=get_rules(),
+        files=ls(folder, max_depth=(1, max_depth)[recursive]),
+    )
+    progress = ProgressDialog.from_runner(runner)
+    runner.run()
 
     print("Artifacts...")
-    print([r.as_posix() for r in results])
+    print([r.as_posix() for r in runner.artifacts])
 
 
 @cli.command()

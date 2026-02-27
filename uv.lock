@@ -73,6 +73,7 @@ name = "ftl"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "attrs" },
     { name = "cattrs" },
     { name = "dearpygui" },
     { name = "platformdirs" },
@@ -84,6 +85,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "attrs", specifier = ">=25.4.0" },
     { name = "cattrs", specifier = ">=25.3.0" },
     { name = "dearpygui", specifier = ">=2.1.1" },
     { name = "platformdirs", specifier = ">=4.5.1" },

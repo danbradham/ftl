@@ -92,6 +92,10 @@ class RichFormatter(logging.Formatter):
             Style(color="purple"),
             re.compile(r"REVOKED"),
         ),
+        "cancelled": (
+            Style(color="purple"),
+            re.compile(r"CANCELLED"),
+        ),
     }
 
     # fmt: off
