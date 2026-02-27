@@ -15,18 +15,19 @@ def set_ffmpeg(file: str):
     Tools.ffmpeg_executable = file
 
 
-def get_ffmpeg():
+def get_ffmpeg(ignore_settings=False):
     if Tools.ffmpeg_executable is not None:
         return Tools.ffmpeg_executable
 
-    if candidate := get_settings().get("ffmpeg"):
-        try:
-            set_ffmpeg(candidate)
-        except FileNotFoundError:
-            raise FileNotFoundError(
-                f"Configured path for ffmpeg does not exist: '{candidate}'"
-            )
-        return candidate
+    if not ignore_settings:
+        if candidate := get_settings().get("ffmpeg"):
+            try:
+                set_ffmpeg(candidate)
+            except FileNotFoundError:
+                raise FileNotFoundError(
+                    f"Configured path for ffmpeg does not exist: '{candidate}'"
+                )
+            return candidate
 
     for path in os.environ["PATH"].split(os.pathsep):
         candidate = os.path.join(path, "ffmpeg.exe")

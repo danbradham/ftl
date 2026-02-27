@@ -1,49 +1,87 @@
 import subprocess
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Literal
 
-from ftl.files import FileSequence, PathType, as_file
-from ftl.tasks.base import Task
-from ftl.tasks.types import Fps, Size
+from ftl.files import FileSequence, PathType
+from ftl.tasks.core import Task
 from ftl.tools import get_ffmpeg
+from ftl.types import Fps, Size
 
 CodecProres = Literal["Prores422", "Prores4444"]
 
 
 @dataclass
 class EncodeMov(Task):
-    src: PathType
-    dst: PathType
-    input_colorspace: str = field(default="srgb", kw_only=True)
-    vcodec: CodecProres = field(default="Prores4444", kw_only=True)
-    fps: Fps = field(default=-1, kw_only=True)
-    max_size: Size = field(default=-1, kw_only=True)
+    folder: Path | str = field(
+        default=".",
+        metadata={
+            "help": "The folder to output the MOV to relative to the source files."
+        },
+    )
+    input_colorspace: str = field(
+        default="srgb",
+        kw_only=True,
+        metadata={
+            "hidden": True,
+            "help": "The colorspace of the source media.",
+        },
+    )
+    vcodec: CodecProres = field(
+        default="Prores4444",
+        kw_only=True,
+        metadata={
+            "hidden": True,
+            "help": "The video codec of the output MOV.",
+        },
+    )
+    fps: Fps = field(
+        default=-1,
+        kw_only=True,
+        metadata={
+            "help": "The framerate of the output MOV.",
+        },
+    )
+    max_size: Size = field(
+        default=-1,
+        kw_only=True,
+        metadata={
+            "help": "The maximum width or height of the output MOV.",
+        },
+    )
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.output = (
+            self.input.path.parent / self.folder / (self.input.stem + ".mov")
+        ).resolve()
 
     def command(self) -> list[str]:
         # fmt: off
+        is_4444 = self.vcodec.lower() == "prores4444"
         cmd = [
             get_ffmpeg(),
             "-r", str(self.fps),
-            "-i", str(self.src),
+            "-i", str(self.input.path),
             "-c:v", "prores_ks",
-            "-profile:v", "4444",
+            "-profile:v", ("422", "4444")[is_4444],
             "-qscale:v", "11",
             "-vendor", "apl0",
-            "-pix_fmt", "yuva444p10le",
-            "-alpha_bits", "16",
+            "-pix_fmt", ("yuv422p10le", "yuva444p10le")[is_4444],
+            *((), ("-alpha_bits", "16"))[is_4444],
             "-color_range", "tv",
             "-colorspace", "bt709",
             "-color_primaries", "bt709",
             "-color_trc", "iec61966-2-1",
             "-y",
-            str(self.dst),
+            str(self.output),
         ]
         # fmt: on
 
         # Filter Graph
         # Colorspace
         filters = []
-        if self.src.suffix == ".exr":
+        if self.input.suffix == ".exr":
             filters.append(
                 "colorspace=space=bt709:primaries=bt709:trc=srgb:range=tv:ispace=bt709:iprimaries=bt709:itrc=linear:irange=tv"
             )
@@ -64,20 +102,19 @@ class EncodeMov(Task):
             ]
 
         # Ensure correct start_number for File Sequences
-        f = as_file(self.src)
-        if isinstance(f, FileSequence):
-            cmd[1:1] = ["-start_number", str(f.frame_start)]
+        if isinstance(self.input, FileSequence):
+            cmd[1:1] = ["-start_number", str(self.input.frame_start)]
 
         return cmd
 
     def run(self) -> PathType:
         # Ensure destination directory exists...
-        self.dst.parent.mkdir(parents=True, exist_ok=True)
+        self.output.parent.mkdir(parents=True, exist_ok=True)
 
         cmd = self.command()
 
-        self.log(f"  MOV: {self.src.name} -> {self.dst.name}")
-        self.log(f"  CMD: {' '.join(cmd)}\n")
+        self.log.debug(f"  MOV: {self.input.name} -> {self.output.name}")
+        self.log.debug(f"  CMD: {' '.join(cmd)}")
 
         try:
             subprocess.run(
@@ -90,4 +127,4 @@ class EncodeMov(Task):
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"FFmpeg failed with error code {e.returncode}") from e
 
-        return self.dst
+        return self.output

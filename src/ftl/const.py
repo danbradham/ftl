@@ -1,6 +1,5 @@
 from ftl import resources
 
-FONT_FILE = resources.get("CommitMono.ttf").as_posix()
 ICON_FILE = resources.get("ftl.ico").as_posix()
 ICON_ENCODE_FILE = resources.get("encode.ico").as_posix()
 SIZE_ITEMS = [-1, 256, 512, 768, 1024, 1280, 1920, 2048, 2160, 3840, 4096, 6144]

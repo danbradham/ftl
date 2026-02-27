@@ -1,4 +1,3 @@
-import os
 import sys
 from ast import literal_eval
 from pathlib import Path
@@ -7,7 +6,6 @@ import typer
 from rich import print
 
 from ftl import files as fs
-from ftl import tasks
 from ftl.settings import Settings, default_settings, get_settings, save_settings
 
 
@@ -41,6 +39,18 @@ cli = typer.Typer()
 def _set(key: str, value: str):
     """Set the value of a Setting..."""
 
+    if key.startswith("rule"):
+        top_level_settings = [
+            s for s in list(Settings.__annotations__.keys()) if not s.startswith("rule")
+        ]
+        print(
+            "Settings Rules from the CLI is unsupported.\n"
+            "Use [bold]'ftl editor'[/bold] instead.\n\n"
+        )
+        print("The following settings can be set from the CLI:")
+        print(top_level_settings)
+        raise typer.Exit(code=1)
+
     value = safe_eval(value)
 
     key_type = Settings.__annotations__.get(key)
@@ -66,16 +76,20 @@ def _set(key: str, value: str):
 def reset():
     """Reset to defaults..."""
 
-    save_settings(default_settings())
+    defaults = default_settings()
+    save_settings(defaults)
+
     print("Reset to defaults...")
-    print(default_settings())
+    print(defaults)
 
 
 @cli.command()
 def settings():
     """Show current settings..."""
+    from ftl.rules import unstructure
 
-    print(get_settings())
+    settings = get_settings()
+    print(unstructure(settings))
 
 
 @cli.command()
@@ -83,51 +97,29 @@ def editor():
     """Launch the Settings Editor..."""
 
     print("Launching Settings...")
-    from ftl.ui import SettingsEditor
+    from ftl.ui.editor import RuleEditor
 
-    SettingsEditor.show()
+    RuleEditor.show()
 
 
 @cli.command()
 def encode(folder: Path = Path("."), recursive: bool = False, max_depth: int = 2):
     """Encode a folder of sequences."""
 
-    from ftl import ui
+    from ftl.files import ls
+    from ftl.runner import Runner
+    from ftl.settings import get_rules
+    from ftl.ui.progress import ProgressDialog
 
-    results = []
-    if not recursive:
-        task = tasks.EncodeFolder(folder, get_settings())
-
-        # Show progress dialog...
-        ui.TaskProgressDialog.from_tasks([t for tg in task.task_groups for t in tg])
-
-        task()
-        results.extend(task.result)
-
-    else:
-        folders = set()
-        for root, subdirs, _ in os.walk(folder, topdown=True):
-            if str(Path(root).relative_to(folder)).count(os.sep) >= max_depth:
-                subdirs[:] = []
-            files = (f for f in fs.ls(Path(root)) if isinstance(f, fs.FileSequence))
-            folders |= set(f.path.parent for f in files)
-
-        task_group = []
-        sub_tasks = []
-        for i, folder in enumerate(folders):
-            task = tasks.EncodeFolder(folder, get_settings())
-            sub_tasks.extend([t for tg in task.task_groups for t in tg])
-            task_group.append(task)
-
-        # Show progress dialog...
-        ui.TaskProgressDialog.from_tasks(sub_tasks)
-
-        for task in task_group:
-            task()
-            results.extend(task.result)
+    runner = Runner(
+        rules=get_rules(),
+        files=ls(folder, max_depth=(1, max_depth)[recursive]),
+    )
+    progress = ProgressDialog.from_runner(runner)
+    runner.run()
 
     print("Artifacts...")
-    print([r.as_posix() for r in results])
+    print([r.as_posix() for r in runner.artifacts])
 
 
 @cli.command()
@@ -178,13 +170,13 @@ def version():
 
     from importlib.metadata import version
 
-    from ftl import tasks
+    from ftl import tools
 
     # Get ffmpeg info
     ffmpeg_version = "N/A"
     try:
-        ffmpeg_executable = tasks.get_ffmpeg().replace("\\", "/")
-        ffmpeg_version = tasks.get_ffmpeg_version()
+        ffmpeg_executable = tools.get_ffmpeg().replace("\\", "/")
+        ffmpeg_version = tools.get_ffmpeg_version()
     except Exception:
         ffmpeg_executable = "FFMPEG not found..."
 

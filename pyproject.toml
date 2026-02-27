@@ -8,10 +8,12 @@ authors = [
 ]
 requires-python = ">=3.11"
 dependencies = [
+    "attrs>=25.4.0",
     "cattrs>=25.3.0",
     "dearpygui>=2.1.1",
     "platformdirs>=4.5.1",
     "pyautogui>=0.9.54",
+    "pytest>=9.0.2",
     "typeguard>=4.4.4",
     "typer>=0.21.1",
 ]
