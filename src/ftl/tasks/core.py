@@ -33,9 +33,23 @@ class Task(ABC):
     ```
     """
 
+    # Hidden tasks will not show up in the UI...
     hidden = False
-    id: str = field(default_factory=lambda: uuid.uuid4().hex)
-    enabled: bool = field(default=True)
+
+    # Shared Task Parameters
+    id: str = field(
+        default_factory=lambda: uuid.uuid4().hex,
+        metadata={
+            "hidden": True,
+            "help": "Unique identifier for the task.",
+        },
+    )
+    enabled: bool = field(
+        default=True,
+        metadata={
+            "help": "Whether the task is enabled.",
+        },
+    )
     input: File | FileSequence = field(
         metadata={
             "hidden": True,

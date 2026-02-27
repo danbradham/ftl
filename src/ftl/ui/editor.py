@@ -467,6 +467,9 @@ class TasksList:
         if user_data in self.rule.tasks:
             self.rule.tasks.remove(user_data)
 
+        if self.callback:
+            self.callback()
+
     def get_task_item(self, task):
         for item in self.items:
             if item.task == task:
@@ -530,6 +533,7 @@ class TasksList:
                                 item_id = dpg.add_input_text(**item_kwargs)
                             else:
                                 warning(f"Unsupported Parameter type: {param.type}")
+                                print(param)
                                 continue
 
                             parameter_items[name] = item_id
@@ -538,7 +542,7 @@ class TasksList:
                             if item_tooltip:
                                 with dpg.tooltip(item_id, delay=0.5):
                                     dpg.add_text(item_tooltip)
-                dpg.add_button(label="delete", callback=self.remove_task, user_data=task)
+                dpg.add_button(label="Delete", callback=self.remove_task, user_data=task)
 
         self.items.append(TaskItem(task, row, parameter_items))
 
