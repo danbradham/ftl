@@ -26,15 +26,17 @@ class Rule(TypedDict):
 
 class Settings(TypedDict):
     ffmpeg: str | None
+    ocio_config: str | None
     rules: list[Rule]
 
 
 def default_settings() -> Settings:
     from ftl.rules import default_rules
-    from ftl.tools import get_ffmpeg
+    from ftl.tools import get_ffmpeg, get_ocio_config
 
     return {
         "ffmpeg": get_ffmpeg(ignore_settings=True),
+        "ocio_config": get_ocio_config(ignore_settings=True),
         "rules": default_rules(),
     }
 
