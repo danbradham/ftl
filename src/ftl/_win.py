@@ -18,8 +18,9 @@ def install():
 
     # fmt: off
     # Build Context Menu
-    menu_path = r"Directory\ContextMenus\FTL.menu"
-    menu_key = winreg.CreateKeyEx(winreg.HKEY_CLASSES_ROOT, menu_path, 0, winreg.KEY_WRITE)
+    menu_path = r"Software\Classes\Directory\ContextMenus\FTL.menu"
+    menu_subcommands_path = r"Directory\ContextMenus\FTL.menu"
+    menu_key = winreg.CreateKeyEx(winreg.HKEY_CURRENT_USER, menu_path, 0, winreg.KEY_WRITE)
 
     verb_key = winreg.CreateKeyEx(menu_key, r"shell\FTL.settings", 0, winreg.KEY_WRITE)
     winreg.SetValueEx(verb_key, "MUIVerb", 0, winreg.REG_SZ, "Open Settings")
@@ -40,16 +41,16 @@ def install():
     winreg.SetValueEx(cmd_key, None, 0, winreg.REG_SZ, rf'{exe} -i -m ftl encode --folder="%V" --recursive --max-depth=2')
 
     # Directory: Set ExtendedSubCommandsKey to menu_path
-    key = winreg.CreateKeyEx(winreg.HKEY_CLASSES_ROOT, r"Directory\shell\FTL", 0, winreg.KEY_WRITE)
+    key = winreg.CreateKeyEx(winreg.HKEY_CURRENT_USER, r"Software\Classes\Directory\shell\FTL", 0, winreg.KEY_WRITE)
     winreg.SetValueEx(key, "MUIVerb", 0, winreg.REG_SZ, "FTL")
     winreg.SetValueEx(key, "Icon", 0, winreg.REG_SZ, str(ICON_FILE))
-    winreg.SetValueEx(key, "ExtendedSubCommandsKey", 0, winreg.REG_SZ, menu_path)
+    winreg.SetValueEx(key, "ExtendedSubCommandsKey", 0, winreg.REG_SZ, menu_subcommands_path)
 
     # Directory Background: Set ExtendedSubCommandsKey to menu_path
-    key = winreg.CreateKeyEx(winreg.HKEY_CLASSES_ROOT, r"Directory\background\shell\FTL", 0, winreg.KEY_WRITE)
+    key = winreg.CreateKeyEx(winreg.HKEY_CURRENT_USER, r"Software\Classes\Directory\background\shell\FTL", 0, winreg.KEY_WRITE)
     winreg.SetValueEx(key, "MUIVerb", 0, winreg.REG_SZ, "FTL")
     winreg.SetValueEx(key, "Icon", 0, winreg.REG_SZ, str(ICON_FILE))
-    winreg.SetValueEx(key, "ExtendedSubCommandsKey", 0, winreg.REG_SZ, menu_path)
+    winreg.SetValueEx(key, "ExtendedSubCommandsKey", 0, winreg.REG_SZ, menu_subcommands_path)
     # fmt: on
 
 
@@ -58,15 +59,15 @@ def uninstall():
 
     # fmt: off
     # Remove Directory Background Verb
-    with winreg.OpenKeyEx(winreg.HKEY_CLASSES_ROOT, r"Directory\background\shell\FTL") as key:
+    with winreg.OpenKeyEx(winreg.HKEY_CURRENT_USER, r"Software\Classes\Directory\background\shell\FTL") as key:
         winreg.DeleteKeyEx(key, "")
 
     # Remove Directory Verb
-    with winreg.OpenKeyEx(winreg.HKEY_CLASSES_ROOT, r"Directory\shell\FTL") as key:
+    with winreg.OpenKeyEx(winreg.HKEY_CURRENT_USER, r"Software\Classes\Directory\shell\FTL") as key:
         winreg.DeleteKeyEx(key, "")
 
     # Remove ContextMenu
-    with winreg.OpenKeyEx(winreg.HKEY_CLASSES_ROOT, r"Directory\ContextMenus\FTL.menu") as key:
+    with winreg.OpenKeyEx(winreg.HKEY_CURRENT_USER, r"Software\Classes\Directory\ContextMenus\FTL.menu") as key:
         with winreg.OpenKeyEx(key, r"shell\FTL.settings") as subkey:
             winreg.DeleteKeyEx(subkey, "command")
             winreg.DeleteKeyEx(subkey, "")
