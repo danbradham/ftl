@@ -57,9 +57,6 @@ class Runner:
     log: Log = field(init=False, repr=False)
     log_records: list = field(default_factory=list, init=False, repr=False)
 
-    def __hash__(self):
-        return hash(self.id)
-
     def __post_init__(self):
         # Setup log
         self.log = Log(name=f"ftl.runner.{self.id}", record_type="runner")
@@ -74,7 +71,11 @@ class Runner:
         self._prepare_run(self.files)
 
     def _prepare_run(self, files: list[File | FileSequence]):
-        for rule in self.rules:
+        enabled_rules = [rule for rule in self.rules if rule.enabled]
+        if not enabled_rules:
+            raise ValueError("At least one Rule must be enabled...")
+
+        for rule in enabled_rules:
             if not rule.enabled:
                 continue
 

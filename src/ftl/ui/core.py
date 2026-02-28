@@ -12,12 +12,16 @@ from uuid import uuid4
 import dearpygui.dearpygui as dpg
 import pyautogui
 
-from ftl import const
+from ftl import resources
 from ftl.ui.theme import get_theme, load_resources, px
 
 # Setup some global state so we can track child processes
 # and gracefully clean them up on exit.
-state = {"child_windows": [], "primary_window": -1, "item_alignments": {}}
+state = {
+    "child_windows": [],
+    "primary_window": -1,
+    "item_alignments": {},
+}
 fonts = {}
 timers = []
 
@@ -254,7 +258,7 @@ def event_loop(wcls, **kwargs):
         title=wcls.title,
         width=px(wcls.width),
         height=px(wcls.height),
-        large_icon=const.ICON_FILE,
+        large_icon=resources.get("ftl.ico").as_posix(),
     )
 
     state["primary_window"] = wcls.primary_window

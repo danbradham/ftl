@@ -46,37 +46,3 @@ class Signals:
         """Return a dictionary of signal names and their descriptions."""
 
         return self.docs.copy()
-
-
-# Define global signals api
-_global_signals = Signals()
-
-
-def define(name: str, description: str):
-    """Define a global signal."""
-
-    _global_signals.define(name, description)
-
-
-def on(name: str, handler: Callable):
-    """Register a handler for a global signal."""
-
-    _global_signals.on(name, handler)
-
-
-def off(handler: Callable, name: str | None):
-    """Unregister a handler for a global signal."""
-
-    _global_signals.off(handler, name)
-
-
-def send(name: str, payload: dict | None = None):
-    """Send an event with a payload."""
-
-    _global_signals.send(name, payload)
-
-
-def describe():
-    """Return a dictionary of signal names and their descriptions."""
-
-    return _global_signals.describe()
