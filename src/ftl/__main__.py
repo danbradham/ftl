@@ -180,12 +180,18 @@ def version():
     except Exception:
         ffmpeg_executable = "FFMPEG not found..."
 
+    # Get OCIO / OIIO info
+    ocio_config = tools.get_ocio_config_name()
+    oiio_version = tools.get_oiio_version()
+
     version_info = {
         "python": sys.version,
         "ftl": version("ftl"),
         "dearpygui": version("dearpygui"),
         "ffmpeg": ffmpeg_version,
         "ffmpeg_exe": ffmpeg_executable,
+        "ocio_config": ocio_config,
+        "oiio_version": oiio_version,
     }
     print(version_info)
 

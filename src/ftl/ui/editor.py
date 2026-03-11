@@ -1,7 +1,6 @@
 from dataclasses import _MISSING_TYPE, dataclass, field
 from logging import warning
-from pathlib import Path
-from typing import Any, Callable, Literal, get_args, get_origin
+from typing import Callable
 
 import dearpygui.dearpygui as dpg
 
@@ -11,6 +10,7 @@ from ftl.tasks import parameterize
 from ftl.tasks.core import ParameterizedTask
 from ftl.ui import core
 from ftl.ui.dialogs import ConfirmDialog
+from ftl.ui.params import parameter_from_field_type, parameter_from_type_name
 from ftl.ui.theme import get_theme, px, set_font, set_theme
 
 
@@ -520,18 +520,22 @@ class TasksList:
                                 default_value=value,
                             )
                             item_tooltip = param.metadata.get("help")
+                            item_param_type = param.metadata.get("param_type")
                             item_id = None
 
-                            hint = get_origin(param.type)
-                            args = get_args(param.type)
-                            if hint == Literal:
-                                item_kwargs["items"] = args
-                                item_id = dpg.add_combo(**item_kwargs)
-                            elif Path in args:
-                                item_id = PathParameter(**item_kwargs)
-                            elif param.type is str:
-                                item_id = dpg.add_input_text(**item_kwargs)
-                            else:
+                            # Check if param_type explicitly set in metadata
+                            if item_param_type:
+                                item_id = parameter_from_type_name(
+                                    item_param_type, **item_kwargs
+                                )
+
+                            # Autodetect param_type based on field attributes
+                            if not item_id:
+                                item_id = parameter_from_field_type(
+                                    param.type, **item_kwargs
+                                )
+
+                            if not item_id:
                                 warning(f"Unsupported Parameter type: {param.type}")
                                 print(param)
                                 continue
@@ -542,7 +546,11 @@ class TasksList:
                             if item_tooltip:
                                 with dpg.tooltip(item_id, delay=0.5):
                                     dpg.add_text(item_tooltip)
-                dpg.add_button(label="Delete", callback=self.remove_task, user_data=task)
+                dpg.add_button(
+                    label="Delete",
+                    callback=self.remove_task,
+                    user_data=task,
+                )
 
         self.items.append(TaskItem(task, row, parameter_items))
 
@@ -579,51 +587,6 @@ def add_tasks_menu(tag: int | str, callback: Callable):
             if task.hidden:
                 continue
             dpg.add_selectable(label=name, callback=_callback, user_data=task)
-
-
-def PathParameter(tag, label: str, user_data: Any, callback: Callable, default_value="."):
-    """Construct a PathParameter"""
-
-    group = dpg.add_group(horizontal=True, horizontal_spacing=px(2))
-
-    def browse_for_folder():
-        from ftl.ui.file_selector import FileSelector
-
-        path = FileSelector.get_directory()
-        if path:
-            dpg.set_value(tag, path)
-            callback(group, path, user_data)
-
-    def set_path(path):
-        dpg.set_value(tag, path)
-        callback(group, path, user_data)
-
-    with core.parent(group):
-        dpg.add_input_text(
-            label="",
-            tag=tag,
-            default_value=default_value,
-        )
-        dpg.add_button(
-            label=".",
-            tag=f"{tag}_cwd_button",
-            callback=lambda: set_path("."),
-            width=px(30),
-        )
-        dpg.add_button(
-            label="..",
-            tag=f"{tag}_parent_button",
-            callback=lambda: set_path(".."),
-            width=px(30),
-        )
-        dpg.add_button(
-            label="Folder",
-            tag=f"{tag}_folder_button",
-            callback=browse_for_folder,
-            width=-1,
-        )
-
-    return group
 
 
 def main(style_editor=False):

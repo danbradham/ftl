@@ -24,8 +24,9 @@ class EncodeGif(Task):
         default="srgb",
         kw_only=True,
         metadata={
-            "hidden": True,
+            "hidden": False,
             "help": "The colorspace of the source media.",
+            "param_type": "colorspace",
         },
     )
     fps: Fps = field(

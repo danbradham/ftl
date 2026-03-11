@@ -23,8 +23,9 @@ class EncodeMov(Task):
         default="srgb",
         kw_only=True,
         metadata={
-            "hidden": True,
+            "hidden": False,
             "help": "The colorspace of the source media.",
+            "param_type": "colorspace",
         },
     )
     vcodec: CodecProres = field(
