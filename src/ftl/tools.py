@@ -96,46 +96,48 @@ def get_oiio_version():
     return oiio.__version__
 
 
-def get_ocio_config():
+def get_ocio_config() -> oiio.ColorConfig:
     return oiio.ColorConfig()
 
 
-def get_ocio_config_name():
+def get_ocio_config_name() -> str:
     """Get the name of the OCIO config."""
 
     return get_ocio_config().configname()
 
 
-def get_ocio_display_names():
+def get_ocio_input_transforms() -> list[str]:
+    """Get OCIO config colorspaces."""
+
+    colorspaces = get_ocio_config().getColorSpaceNames()
+    return sorted(list(set(colorspaces) - set(get_ocio_display_devices())))
+
+
+def get_ocio_default_input_transform() -> str:
+    """Get OCIO default input transform."""
+
+    return get_ocio_config().getColorSpaceNameByRole("scene_linear")
+
+
+def get_ocio_display_devices() -> list[str]:
     """Get OCIO config display colorspaces."""
 
     return get_ocio_config().getDisplayNames()
 
 
-def get_ocio_view_names(display_name: str):
-    """Get OCIO config display colorspaces."""
-
-    return get_ocio_config().getViewNames(display_name)
-
-
-def get_ocio_colorspaces(display=False):
-    """Get OCIO config colorspaces."""
-
-    colorspaces = get_ocio_config().getColorSpaceNames()
-
-    if display:
-        return colorspaces
-
-    return sorted(list(set(colorspaces) - set(get_ocio_display_names())))
-
-
-def get_ocio_default_display_name():
+def get_ocio_default_display_name() -> str:
     """Get OCIO config."""
 
     return get_ocio_config().getDefaultDisplayName()
 
 
-def get_ocio_default_view_name():
+def get_ocio_view_transforms(display_name: str) -> list[str]:
+    """Get OCIO config display colorspaces."""
+
+    return get_ocio_config().getViewNames(display_name)
+
+
+def get_ocio_default_view_name() -> str:
     """Get OCIO config."""
 
     return get_ocio_config().getDefaultViewName()

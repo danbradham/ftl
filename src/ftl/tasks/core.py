@@ -58,7 +58,6 @@ class Task(ABC):
     )
     # output: Any = field(
     #     default=None,
-    #     init=False,
     #     metadata={
     #         "hidden": True,
     #         "help": (

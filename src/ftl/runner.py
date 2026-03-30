@@ -75,16 +75,14 @@ class Runner:
         if not enabled_rules:
             raise ValueError("At least one Rule must be enabled...")
 
-        for rule in enabled_rules:
-            if not rule.enabled:
-                continue
+        self.rules_map = [
+            {"rule": rule, "files": [], "tasks": []} for rule in enabled_rules
+        ]
 
-            rule_map = {
-                "rule": rule,
-                "files": [],
-                "tasks": [],
-            }
-            for file in files:
+        for file in files:
+            for rule_map in self.rules_map:
+                rule = rule_map["rule"]
+
                 if not rule.accepts(file):
                     continue
 
@@ -104,14 +102,11 @@ class Runner:
                     rule_map["tasks"].append(task)
                     self.tasks_by_id[task.id] = task
 
-            self.files.extend(rule_map["files"])
-            self.rules_map.append(rule_map)
-            self.tasks.extend(
-                rule_map["tasks"] + [st for t in rule_map["tasks"] for st in t.sub_tasks]
-            )
-            self.tasks_count += len(rule_map["tasks"]) + sum(
-                [len(t.sub_tasks) for t in rule_map["tasks"]]
-            )
+                    self.tasks.append(task)
+
+                break
+
+        self.tasks_count = len(self.tasks)
 
         handler = logging.StreamHandler()
         handler.setFormatter(RichFormatter())
@@ -186,7 +181,11 @@ class Runner:
         # Capture all logging records
         self.log_records.append(record)
 
-    def try_task(self, task):
+    def try_task(self, task, dry=False):
+        if dry:
+            self.artifacts.append(task.output)
+            return
+
         try:
             task()
             self.artifacts.append(task.result)
@@ -217,7 +216,7 @@ class Runner:
 
                     self.current_task = task_idx
                     self.log.info(f"{task.input.name} -> {task.output.name}")
-                    self.try_task(task)
+                    self.try_task(task, dry)
 
             if self.status == Status.FAILED:
                 self.log.error(f"Cancelling run due to failed task.\n\n{task}\n\n")

@@ -19,15 +19,6 @@ class EncodeMov(Task):
             "help": "The folder to output the MOV to relative to the source files."
         },
     )
-    input_colorspace: str = field(
-        default="srgb",
-        kw_only=True,
-        metadata={
-            "hidden": False,
-            "help": "The colorspace of the source media.",
-            "param_type": "colorspace",
-        },
-    )
     vcodec: CodecProres = field(
         default="Prores4444",
         kw_only=True,

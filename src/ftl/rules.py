@@ -9,7 +9,7 @@ from cattrs import (
     unstructure,
 )
 
-from ftl import registry
+from ftl import registry, tools
 from ftl.files import File, FileSequence
 from ftl.tasks import ParameterizedTask
 
@@ -21,9 +21,34 @@ class Rule:
     file_type: Literal["File", "FileSequence"]
     file_patterns: list[str]
     tasks: list[ParameterizedTask]
+    ocio_enabled: bool = field(default=False)
+    ocio_input_transform: str = field(
+        default_factory=tools.get_ocio_default_input_transform,
+        metadata={
+            "hidden": False,
+            "help": "The colorspace of the source media.",
+            "param_type": "ocio_input_transform",
+        },
+    )
+    ocio_display_device: str = field(
+        default_factory=tools.get_ocio_default_display_name,
+        metadata={
+            "hidden": False,
+            "help": "The device used to display the output media.",
+            "param_type": "ocio_output_transform",
+        },
+    )
+    ocio_view_transform: str = field(
+        default_factory=tools.get_ocio_default_view_name,
+        metadata={
+            "hidden": False,
+            "help": "The view transform used to display the output media.",
+            "param_type": "ocio_view_transform",
+        },
+    )
     description: str = field(default="")
     enabled: bool = field(default=True)
-    schema_version: int = field(default=1, metadata={"hidden": True})
+    schema_version: int = field(default=2, metadata={"hidden": True})
 
     @property
     def fname(self):
@@ -43,12 +68,16 @@ class Rule:
 @register_unstructure_hook
 def unstructure_rule(rule: Rule):
     return {
+        "schema_version": rule.schema_version,
+        "enabled": rule.enabled,
         "name": rule.name,
         "description": rule.description,
         "file_type": rule.file_type,
         "file_patterns": rule.file_patterns,
-        "enabled": rule.enabled,
-        "schema_version": rule.schema_version,
+        "ocio_enabled": rule.ocio_enabled,
+        "ocio_input_transform": rule.ocio_input_transform,
+        "ocio_display_device": rule.ocio_display_device,
+        "ocio_view_transform": rule.ocio_view_transform,
         "tasks": [unstructure(t) for t in rule.tasks],
     }
 
@@ -75,9 +104,12 @@ def structure_rule(val: Any, _) -> Rule:
     # - If a migration can not fully maintain the behavior
     #   or a previous rule. Set data["enabled"] = False.
     #   This will allow users to complete the changes.
-    # if schema_version == 1:
-    #     ...
-    #     data["schema_version"] = 2
+    if schema_version == 1:
+        val["ocio_enabled"] = False
+        val["ocio_input_transform"] = tools.get_ocio_default_input_transform()
+        val["ocio_display_device"] = tools.get_ocio_default_display_name()
+        val["ocio_view_transform"] = tools.get_ocio_default_view_name()
+        val["schema_version"] = 2
     # if schema_version == 2:
     #     ...
     #     data["schema_version"] = 3
@@ -88,6 +120,10 @@ def structure_rule(val: Any, _) -> Rule:
         name=val["name"],
         file_type=val["file_type"],
         file_patterns=val["file_patterns"],
+        ocio_enabled=val["ocio_enabled"],
+        ocio_input_transform=val["ocio_input_transform"],
+        ocio_display_device=val["ocio_display_device"],
+        ocio_view_transform=val["ocio_view_transform"],
         tasks=[structure(t, ParameterizedTask) for t in val["tasks"]],
     )
 
@@ -136,7 +172,27 @@ def default_rules() -> list[Rule]:
 
     return [
         Rule(
-            name="Encode Sequences",
+            name="EXR Sequence (acescg)",
+            file_type="FileSequence",
+            file_patterns=["*acescg*.exr"],
+            ocio_enabled=True,
+            ocio_input_transform="ACEScg",
+            ocio_display_device="sRGB - Display",
+            ocio_view_transform="ACES 2.0 - SDR 100 nits (Rec.709)",
+            tasks=[encode_mov, encode_mp4, encode_gif],
+        ),
+        Rule(
+            name="EXR Sequence (srgb)",
+            file_type="FileSequence",
+            file_patterns=["*.exr"],
+            ocio_enabled=True,
+            ocio_input_transform="Linear Rec.709 (sRGB)",
+            ocio_display_device="sRGB - Display",
+            ocio_view_transform="ACES 2.0 - SDR 100 nits (Rec.709)",
+            tasks=[encode_mov, encode_mp4, encode_gif],
+        ),
+        Rule(
+            name="SDR Sequence",
             file_type="FileSequence",
             file_patterns=["*"],
             tasks=[encode_mov, encode_mp4, encode_gif],

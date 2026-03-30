@@ -3,7 +3,6 @@ from typing import Any, Callable, Literal, get_args, get_origin
 
 import dearpygui.dearpygui as dpg
 
-from ftl import tools
 from ftl.ui import core
 from ftl.ui.core import px
 
@@ -15,8 +14,6 @@ def PathParameter(
     callback: Callable,
     default_value: str = ".",
 ):
-    """Construct a PathParameter"""
-
     group = dpg.add_group(horizontal=True, horizontal_spacing=px(2))
 
     def browse_for_folder():
@@ -59,17 +56,21 @@ def PathParameter(
     return group
 
 
-def ColorspaceParameter(
+def ComboParameter(
     tag,
+    cast: type,
     label: str,
     user_data: Any,
     callback: Callable,
     default_value: str | None = None,
+    items: list[Any] | None = None,
 ):
-    default_value = default_value or "sRGB Encoded Rec.709 (sRGB)"
-    items = tools.get_ocio_colorspaces()
+    items = [str(item) for item in items] if items else []
+    default_value = str(default_value) if default_value else ""
 
     def value_changed(sender, app_data, user_data):
+        # Cast value back to original type
+        app_data = cast(app_data)
         callback(sender, app_data, user_data)
 
     param = dpg.add_combo(
@@ -85,7 +86,7 @@ def ColorspaceParameter(
 
 parameters_by_name = {
     "path": PathParameter,
-    "colorspace": ColorspaceParameter,
+    "combo": ComboParameter,
 }
 
 
@@ -100,8 +101,9 @@ def parameter_from_field_type(field_type: Any, **item_kwargs):
     args = get_args(field_type)
 
     if hint == Literal:
+        item_kwargs["cast"] = type(args[0])
         item_kwargs["items"] = args
-        return dpg.add_combo(**item_kwargs)
+        return parameter_from_type_name("combo", **item_kwargs)
 
     if Path in args:
         return parameter_from_type_name("path", **item_kwargs)

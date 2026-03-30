@@ -19,15 +19,6 @@ class EncodeMp4(Task):
             "help": "The folder to output the MP4 to relative to the source files."
         },
     )
-    input_colorspace: str = field(
-        default="srgb",
-        kw_only=True,
-        metadata={
-            "hidden": False,
-            "help": "The colorspace of the source media.",
-            "param_type": "colorspace",
-        },
-    )
     vcodec: CodecH264 = field(
         default="h264",
         kw_only=True,

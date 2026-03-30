@@ -103,7 +103,12 @@ def editor():
 
 
 @cli.command()
-def encode(folder: Path = Path("."), recursive: bool = False, max_depth: int = 2):
+def encode(
+    folder: Path = Path("."),
+    recursive: bool = False,
+    max_depth: int = 2,
+    dry: bool = False,
+):
     """Encode a folder of sequences."""
 
     from ftl.files import ls
@@ -116,7 +121,7 @@ def encode(folder: Path = Path("."), recursive: bool = False, max_depth: int = 2
         files=ls(folder, max_depth=(1, max_depth)[recursive]),
     )
     progress = ProgressDialog.from_runner(runner)
-    runner.run()
+    runner.run(dry=dry)
 
     print("Artifacts...")
     print([r.as_posix() for r in runner.artifacts])

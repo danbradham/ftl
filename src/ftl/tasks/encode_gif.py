@@ -20,15 +20,6 @@ class EncodeGif(Task):
             "help": "The folder to output the GIF to relative to the source files."
         },
     )
-    input_colorspace: str = field(
-        default="srgb",
-        kw_only=True,
-        metadata={
-            "hidden": False,
-            "help": "The colorspace of the source media.",
-            "param_type": "colorspace",
-        },
-    )
     fps: Fps = field(
         default=24,
         kw_only=True,
