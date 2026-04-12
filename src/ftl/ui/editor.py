@@ -502,7 +502,8 @@ class TasksList:
         with dpg.group(tag=self.tag):
             dpg.add_spacer(height=px(20))
             with dpg.group(tag=f"{self.tag}_header", horizontal=True):
-                dpg.add_text(self.label)
+                tag_label = dpg.add_text(self.label)
+                set_font(tag_label, "p", "light")
                 with core.halign(core.RIGHT):
                     dpg.add_button(label="Add Task")
                     add_tasks_menu("add_task_menu", self.on_add_task)

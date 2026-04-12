@@ -31,7 +31,7 @@ class Rule:
         },
     )
     ocio_display_device: str = field(
-        default_factory=tools.get_ocio_default_display_name,
+        default_factory=tools.get_ocio_default_display_device,
         metadata={
             "hidden": False,
             "help": "The device used to display the output media.",
@@ -39,7 +39,7 @@ class Rule:
         },
     )
     ocio_view_transform: str = field(
-        default_factory=tools.get_ocio_default_view_name,
+        default_factory=tools.get_ocio_default_view_transform,
         metadata={
             "hidden": False,
             "help": "The view transform used to display the output media.",
@@ -107,8 +107,8 @@ def structure_rule(val: Any, _) -> Rule:
     if schema_version == 1:
         val["ocio_enabled"] = False
         val["ocio_input_transform"] = tools.get_ocio_default_input_transform()
-        val["ocio_display_device"] = tools.get_ocio_default_display_name()
-        val["ocio_view_transform"] = tools.get_ocio_default_view_name()
+        val["ocio_display_device"] = tools.get_ocio_default_display_device()
+        val["ocio_view_transform"] = tools.get_ocio_default_view_transform()
         val["schema_version"] = 2
     # if schema_version == 2:
     #     ...
@@ -178,7 +178,7 @@ def default_rules() -> list[Rule]:
             ocio_enabled=True,
             ocio_input_transform="ACEScg",
             ocio_display_device="sRGB - Display",
-            ocio_view_transform="ACES 2.0 - SDR 100 nits (Rec.709)",
+            ocio_view_transform="ACES 1.0 - SDR Video",
             tasks=[encode_mov, encode_mp4, encode_gif],
         ),
         Rule(
@@ -188,13 +188,14 @@ def default_rules() -> list[Rule]:
             ocio_enabled=True,
             ocio_input_transform="Linear Rec.709 (sRGB)",
             ocio_display_device="sRGB - Display",
-            ocio_view_transform="ACES 2.0 - SDR 100 nits (Rec.709)",
+            ocio_view_transform="ACES 1.0 - SDR Video",
             tasks=[encode_mov, encode_mp4, encode_gif],
         ),
         Rule(
             name="SDR Sequence",
             file_type="FileSequence",
             file_patterns=["*"],
+            ocio_enabled=False,
             tasks=[encode_mov, encode_mp4, encode_gif],
         ),
     ]

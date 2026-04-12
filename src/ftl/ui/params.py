@@ -84,9 +84,62 @@ def ComboParameter(
     return param
 
 
+def ColorParameter(
+    tag,
+    label: str,
+    user_data: Any,
+    callback: Callable,
+    default_value: str | None = None,
+):
+    default_enabled = bool(default_value)
+    default_value = "#" + (default_value or "000000").lstrip("#")
+    group = dpg.add_group(horizontal=True, horizontal_spacing=px(4))
+
+    def rgb_to_hex(r, g, b):
+        return "#{:02x}{:02x}{:02x}".format(int(255 * r), int(255 * g), int(255 * b))
+
+    def hex_to_rgb(hex):
+        if hex.startswith("#"):
+            hex = hex[1:]
+        return tuple(int(hex[i : i + 2], 16) for i in (0, 2, 4))
+
+    def checkbox_changed(sender, app_data, user_data):
+        if app_data:
+            dpg.configure_item(tag, enabled=True)
+            callback(sender, dpg.get_value(tag), user_data)
+        else:
+            dpg.configure_item(tag, enabled=False)
+            callback(sender, "", user_data)
+
+    def value_changed(sender, app_data, user_data):
+        app_data = rgb_to_hex(*app_data[:-1])
+        callback(sender, app_data, user_data)
+
+    with core.parent(group):
+        dpg.add_checkbox(
+            tag=tag + "_enabled",
+            user_data=user_data,
+            callback=checkbox_changed,
+            default_value=default_enabled,
+        )
+        dpg.add_color_edit(
+            label=label,
+            tag=tag,
+            default_value=hex_to_rgb(default_value),
+            display_mode=dpg.mvColorEdit_hex,
+            no_alpha=True,
+            user_data=user_data,
+            callback=value_changed,
+            enabled=default_enabled,
+        )
+
+    return group
+
+
 parameters_by_name = {
     "path": PathParameter,
     "combo": ComboParameter,
+    "color": ColorParameter,
 }
 
 

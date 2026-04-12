@@ -124,7 +124,17 @@ def encode(
     runner.run(dry=dry)
 
     print("Artifacts...")
-    print([r.as_posix() for r in runner.artifacts])
+    artifacts = []
+    for r in runner.artifacts:
+        if not r:
+            continue
+        if hasattr(r, "format"):
+            artifacts.append(r.format())
+        elif isinstance(r, Path):
+            artifacts.append(r.as_posix())
+        else:
+            artifacts.append(str(r))
+    print(artifacts)
 
 
 @cli.command()

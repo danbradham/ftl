@@ -41,6 +41,14 @@ class EncodeGif(Task):
             "help": "The maximum number of colors of the output GIF.",
         },
     )
+    background: str = field(
+        default="",
+        kw_only=True,
+        metadata={
+            "help": "The background color of the output GIF.\nOnly applies to transparent media.",
+            "param_type": "color",
+        },
+    )
 
     def __post_init__(self):
         super().__post_init__()
@@ -79,11 +87,22 @@ class EncodeGif(Task):
         palettegen = f"palettegen=max_colors={self.max_colors}:reserve_transparent=on:transparency_color=ffffff"
         palette = f"[s];[s]split[a][b];[a]{palettegen}[p];[b][p]paletteuse"
 
+        filter_graph = ",".join(filters)
+
+        # Background Filter Graph
+        background_graph = ""
+        if self.background:
+            background_graph = (
+                "[s];[s]split=2[bg][fg];"
+                f"[bg]drawbox=c={self.background}@1:replace=1:t=fill[bg];"
+                "[bg][fg]overlay=format=auto"
+            )
+
         # Apply Filter Graph
-        if filters:
+        if filter_graph or background_graph or palette:
             cmd[3:3] = [
                 "-filter_complex",
-                ",".join(filters) + palette,
+                filter_graph + background_graph + palette,
             ]
 
         # Ensure correct start_number for File Sequences
@@ -97,8 +116,9 @@ class EncodeGif(Task):
         self.output.parent.mkdir(parents=True, exist_ok=True)
 
         cmd = self.command()
-        self.log.debug(f"  GIF: {self.input.name} -> {self.output.name}")
-        self.log.debug(f"  CMD: {' '.join(cmd)}")
+
+        self.log.info(f"{self.input.name} -> {self.output.name}")
+        self.log.info(f"command: {' '.join(cmd)}")
 
         try:
             subprocess.run(

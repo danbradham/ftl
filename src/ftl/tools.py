@@ -1,6 +1,7 @@
 import os
 import subprocess
 import sysconfig
+from pathlib import Path
 
 import OpenImageIO as oiio
 
@@ -10,6 +11,7 @@ from ftl.settings import get_settings
 class Tools:
     ffmpeg_executable: str | None = None
     oiiotool_executable: str | None = None
+    ocio_config: oiio.ColorConfig | None = None
 
 
 def set_ffmpeg(file: str):
@@ -96,8 +98,16 @@ def get_oiio_version():
     return oiio.__version__
 
 
+def set_ocio_config(config_path: str) -> None:
+    """Set the OCIO config path."""
+
+    Tools.ocio_config = oiio.ColorConfig(config_path)
+
+
 def get_ocio_config() -> oiio.ColorConfig:
-    return oiio.ColorConfig()
+    if Tools.ocio_config is None:
+        Tools.ocio_config = oiio.ColorConfig()
+    return Tools.ocio_config
 
 
 def get_ocio_config_name() -> str:
@@ -107,37 +117,58 @@ def get_ocio_config_name() -> str:
 
 
 def get_ocio_input_transforms() -> list[str]:
-    """Get OCIO config colorspaces."""
+    """Get available input colorspaces from the OCIO config."""
 
     colorspaces = get_ocio_config().getColorSpaceNames()
     return sorted(list(set(colorspaces) - set(get_ocio_display_devices())))
 
 
 def get_ocio_default_input_transform() -> str:
-    """Get OCIO default input transform."""
+    """Get the default input transform (scene_linear) from the OCIO config."""
 
     return get_ocio_config().getColorSpaceNameByRole("scene_linear")
 
 
 def get_ocio_display_devices() -> list[str]:
-    """Get OCIO config display colorspaces."""
+    """Get a list of display colorspaces defined in the OCIO config."""
 
     return get_ocio_config().getDisplayNames()
 
 
-def get_ocio_default_display_name() -> str:
-    """Get OCIO config."""
+def get_ocio_default_display_device() -> str:
+    """Get the default display device name from the OCIO config."""
 
     return get_ocio_config().getDefaultDisplayName()
 
 
 def get_ocio_view_transforms(display_name: str) -> list[str]:
-    """Get OCIO config display colorspaces."""
+    """Get view transforms associated with a specific display device name."""
 
     return get_ocio_config().getViewNames(display_name)
 
 
-def get_ocio_default_view_name() -> str:
-    """Get OCIO config."""
+def get_ocio_default_view_transform() -> str:
+    """Get the default view transform name from the OCIO config."""
 
     return get_ocio_config().getDefaultViewName()
+
+
+def ocio_display(
+    input: Path,
+    output: Path,
+    input_transform: str,
+    display_device: str,
+    view_transform: str,
+    unpremult: bool = True,
+):
+    """Applies the OCIO display transform to an image."""
+
+    in_buf = oiio.ImageBuf(input.as_posix())
+    out_buf = oiio.ImageBufAlgo.ociodisplay(
+        in_buf,
+        fromspace=input_transform,
+        display=display_device,
+        view=view_transform,
+        unpremult=unpremult,
+    )
+    out_buf.write(output.as_posix())
