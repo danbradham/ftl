@@ -104,19 +104,19 @@ class Task(ABC):
     def __call__(self):
         """Start and run the Task."""
 
+        if self.status_request in (Status.CANCELLED, Status.REVOKED):
+            return self.accept(self.status_request)
+
         self.set_status(Status.RUNNING, 0)
         try:
-            if self.status_request in (Status.CANCELLED, Status.REVOKED):
-                return self.accept(self.status_request)
             self.result = self.run()
             self.set_status(Status.SUCCESS, 100)
+            return self.result
         except Exception:
             self.error = sys.exc_info()
             self.log.exception("Task failed...")
             self.set_status(Status.FAILED)
             raise
-
-        return self.result
 
     def prepare_record(self, record):
         """Add context to logging records."""
@@ -158,7 +158,7 @@ class Task(ABC):
         )
 
     def request(self, status):
-        self.log.debug(f"{status.upper()} requested...")
+        self.log.info(f"{status.upper()} requested...")
         self.status_request = status
 
     def accept(self, status):

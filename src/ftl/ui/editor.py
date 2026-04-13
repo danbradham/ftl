@@ -79,7 +79,7 @@ class RuleEditor(core.Window):
         self.setup_rules_list()
         self.setup_welcome_screen()
         self.setup_exit_callback()
-        core.center_viewport(px(self.width), px(self.height))
+        core.center_viewport()
         self.load_rules()
 
     def load_rules(self):
@@ -230,6 +230,7 @@ class RuleEditor(core.Window):
                         dpg.add_text("Match Video: *.mov *.mp4 *.avi")
                         dpg.add_text("Match ACEScg files: *acescg*")
 
+                    dpg.add_spacer(height=px(8))
                     self.ocio_control = OcioControl(
                         tag="editor_ocio",
                         callback=lambda: setattr(self, "unsaved_changes", True),
@@ -646,6 +647,8 @@ class TasksList:
                             if item_tooltip:
                                 with dpg.tooltip(item_id, delay=0.5):
                                     dpg.add_text(item_tooltip)
+
+                    dpg.add_spacer(height=px(8))
                 dpg.add_button(
                     label="Delete",
                     callback=self.remove_task,

@@ -58,7 +58,8 @@ class EncodeGif(Task):
 
     def command(self) -> list[str]:
         # fmt: off
-        cmd = [get_ffmpeg(),
+        cmd = [
+            get_ffmpeg(),
             "-i", str(self.input.path),
             "-y",
             str(self.output),
@@ -67,6 +68,7 @@ class EncodeGif(Task):
 
         # Filter Graph
         # FPS
+        cmd[3:3] = ["-framerate", str(self.fps)]
         filters = [f"fps=fps={self.fps}"]
 
         # Colorspace
@@ -100,7 +102,7 @@ class EncodeGif(Task):
 
         # Apply Filter Graph
         if filter_graph or background_graph or palette:
-            cmd[3:3] = [
+            cmd[5:5] = [
                 "-filter_complex",
                 filter_graph + background_graph + palette,
             ]
@@ -118,7 +120,11 @@ class EncodeGif(Task):
         cmd = self.command()
 
         self.log.info(f"{self.input.name} -> {self.output.name}")
-        self.log.info(f"command: {' '.join(cmd)}")
+        self.log.info(f"Folder: {self.folder}")
+        self.log.info(f"Framerate: {self.fps}")
+        self.log.info(f"Max Size: {self.max_size}")
+        self.log.info(f"Background: {self.background}")
+        self.log.debug(f"command: {' '.join(cmd)}")
 
         try:
             subprocess.run(

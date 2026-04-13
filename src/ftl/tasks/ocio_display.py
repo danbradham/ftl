@@ -5,7 +5,10 @@ from typing import ClassVar
 from ftl import tools
 from ftl.files import File, FileSequence, as_temp
 from ftl.tasks.core import Task
-from ftl.tasks.generic import RemoveFile
+from ftl.tasks.generic import Delete
+from ftl.types import Status
+
+# TODO: Add support for OCIODisplay on File objects.
 
 
 @dataclass
@@ -33,11 +36,15 @@ class OCIODisplay(Task):
     def __post_init__(self):
         super().__post_init__()
 
-        self.output = as_temp(self.input, suffix=".png")
+        # TODO
+        # This method should support creating temporary sequences
+        # for File objects. Currently it only handles File -> File
+        # or FileSequence -> FileSequence.
+        self.output: FileSequence = as_temp(self.input, suffix=".png")
         self.temp_folder = self.output.path.parent
 
-    def cleanup_task(self) -> RemoveFile:
-        return RemoveFile(
+    def cleanup_task(self) -> Delete:
+        return Delete(
             input=self.output,
             include_parent=True,
         )
@@ -81,7 +88,7 @@ class OCIODisplay(Task):
         # fmt: on
         return cmd
 
-    def run(self) -> File | FileSequence:
+    def run(self) -> File | FileSequence | None:
         # Ensure destination directory exists...
         self.output.path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -91,22 +98,29 @@ class OCIODisplay(Task):
         self.log.info(f"Display Device: {self.display_device}")
         self.log.info(f"View Transform: {self.view_transform}")
 
+        if isinstance(self.input, File):
+            self.log.warning("Color Management not supported for images yet...")
+            self.log.info(
+                "Skipping OCIODisplay: OCIO not supported for indiviual Files yet."
+            )
+            return
+
         nframes = len(self.output.files)
         framestep = 100.0 / len(self.output.files)
         for i, (input, output) in enumerate(zip(self.input.files, self.output.files)):
-            try:
-                tools.ocio_display(
-                    input,
-                    output,
-                    self.input_transform,
-                    self.display_device,
-                    self.view_transform,
-                )
-                self.set_progress(
-                    int(framestep * i),
-                    f"Writing frame {i + 1} of {nframes}",
-                )
-            except Exception as e:
-                raise RuntimeError(f"OIIO failed to convert {input}") from e
+            if self.status_request in (Status.CANCELLED, Status.REVOKED):
+                return self.accept(self.status_request)
+
+            tools.ocio_display(
+                input,
+                output,
+                self.input_transform,
+                self.display_device,
+                self.view_transform,
+            )
+            self.set_progress(
+                int(framestep * i),
+                f"Writing frame {i + 1} of {nframes}",
+            )
 
         return self.output

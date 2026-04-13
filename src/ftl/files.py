@@ -48,6 +48,9 @@ class File:
             path = self.path
         return f"{path.as_posix()}"
 
+    def exists(self):
+        return self.path.exists()
+
     @classmethod
     def from_file(cls, file: PathType):
         path = Path(file)
@@ -79,6 +82,9 @@ class FileSequence:
         if self.missing_frames:
             result += f"\n  missing {self.missing_frames}"
         return result
+
+    def exists(self):
+        return all(f.exists() for f in self.files)
 
     @classmethod
     def from_file(cls, file: PathType):
@@ -194,12 +200,3 @@ def ls(folder: PathType, max_depth: int = 1) -> list[File | FileSequence]:
 
 
 FileType = Type[File] | Type[FileSequence]
-
-
-def main():
-    for file in ls(Path("data"), max_depth=2):
-        print(file.format())
-
-
-if __name__ == "__main__":
-    main()

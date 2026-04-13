@@ -1,13 +1,15 @@
 import logging
+import time
 import uuid
 from dataclasses import dataclass, field
+from threading import Thread
 from typing import Any
 
 from ftl import tasks
 from ftl.files import File, FileSequence, ls
-from ftl.logging import Log, RichFormatter, record_type
+from ftl.logging import FileFormatter, Log, RichFormatter, record_type
 from ftl.rules import Rule
-from ftl.settings import get_rules
+from ftl.settings import USER_DATA_DIR, get_rules
 from ftl.signals import Signals
 from ftl.tasks import Task
 from ftl.types import Status
@@ -93,12 +95,15 @@ class Runner:
             raise ValueError("At least one Rule must be enabled...")
 
         self.rules_map = [
-            {"rule": rule, "files": [], "tasks": []} for rule in enabled_rules
+            {"rule": rule, "files": [], "tasks": [], "file_tasks": []}
+            for rule in enabled_rules
         ]
 
         for file in files:
             for rule_map in self.rules_map:
                 rule = rule_map["rule"]
+                rule_map["files"].append(file)
+                rule_map["file_tasks"].append([])
 
                 if not rule.accepts(file):
                     continue
@@ -119,13 +124,13 @@ class Runner:
                     )
                     self._add_task(ocio_task)
                     rule_map["tasks"].append(ocio_task)
+                    rule_map["file_tasks"][-1].append(ocio_task)
                     # Cleanup task
                     ocio_cleanup_task = ocio_task.cleanup_task()
                     # The expected colormanaged_file
                     colormanaged_file = ocio_task.output
 
                 # Encoding Tasks
-                rule_map["files"].append(file)
                 for parameterized_task in rule.tasks:
                     task_type = parameterized_task.task
                     task_parameters = parameterized_task.parameters
@@ -133,6 +138,7 @@ class Runner:
                     task = task_type(**task_parameters)
                     self._add_task(task)
                     rule_map["tasks"].append(task)
+                    rule_map["file_tasks"][-1].append(task)
 
                     # Use color managed input files if available
                     task.input = colormanaged_file or file
@@ -141,6 +147,7 @@ class Runner:
                 if rule.ocio_enabled and ocio_cleanup_task:
                     self._add_task(ocio_cleanup_task)
                     rule_map["tasks"].append(ocio_cleanup_task)
+                    rule_map["file_tasks"][-1].append(ocio_cleanup_task)
 
                 # This ensures we only use one Rule per File or FileSequence
                 # This may or may not be desireable, but it's a reasonable
@@ -154,6 +161,12 @@ class Runner:
         handler = logging.StreamHandler()
         handler.setFormatter(RichFormatter())
         self.log.addHandler(handler)
+
+        self.log_file = USER_DATA_DIR / "logs" / f"{self.id}.log"
+        self.log_file.parent.mkdir(parents=True, exist_ok=True)
+        file_handler = logging.FileHandler(self.log_file)
+        file_handler.setFormatter(FileFormatter())
+        self.log.addHandler(file_handler)
 
     def request(self, status: Status):
         self.status_request = status
@@ -172,6 +185,12 @@ class Runner:
         }
         payload.update(fields)
         return payload
+
+    def is_stopping(self):
+        return self.status_request and self.status_request in Status.DONE
+
+    def is_running(self):
+        return self.status == Status.RUNNING
 
     def set_status(self, status: Status):
         if status == self.status:
@@ -194,7 +213,10 @@ class Runner:
         progress_per_step = 100.0 / self.tasks_count
         progress = event.payload["progress"] / 100.0
         rule = self.rules_map[self.current_rule]["rule"]
-        self.progress = int(task_index * progress_per_step + progress * progress_per_step)
+        if not self.is_stopping():
+            self.progress = int(
+                task_index * progress_per_step + progress * progress_per_step
+            )
         payload = self._new_event_payload(
             type="progress_changed",
             label=f"{rule.name}",
@@ -225,26 +247,35 @@ class Runner:
         self.log_records.append(record)
 
     def try_task(self, task, dry=False):
+        with record_type(self.log, "task_title"):
+            self.log.info("")
+
         if dry:
             self.artifacts.append(task.output)
-            return
+            return Status.SUCCESS
 
-        try:
-            task()
-            self.artifacts.append(task.result)
-        except Exception as e:
-            self.set_status(Status.FAILED)
-            raise RuntimeError(f"Task failed: {task.name}\n{e}")
+        # Start Task in Thread
+        task_thread = Thread(target=task)
+        task_thread.start()
 
-    def log_task(self, task):
-        self.log.info("")
+        # Wait for task to finish
+        while True:
+            self.signals.send("await_task", self._new_event_payload(task=task))
+            if self.status_request == Status.CANCELLED:
+                task.request(Status.CANCELLED)
+                task.wait()
+                return task.status
+            if task.status in Status.DONE:
+                self.artifacts.append(task.output)
+                return task.status
+            time.sleep(0.1)
 
     def run(self, dry: bool = False):
 
         self.log.info(f"\nEnabled Rules ({len(self.rules_map)})")
         self.log.info(
             "\n".join(
-                [f"  [{(' ', '✓')[rule.enabled]}] {rule.name}" for rule in self.rules]
+                [f"  [{(' ', 'x')[rule.enabled]}] {rule.name}" for rule in self.rules]
             )
         )
 
@@ -252,13 +283,21 @@ class Runner:
         self.set_status(Status.RUNNING)
 
         for rule_idx, rule_map in enumerate(self.rules_map):
-            with record_type(self.log, "rule"):
-                self.current_rule = rule_idx
-                rule = rule_map["rule"]
-                self.log.info("")
+            if not rule_map["tasks"]:
+                continue
 
-            with record_type(self.log, "task_title"):
-                for task_idx, task in enumerate(rule_map["tasks"]):
+            self.current_rule = rule_idx
+            rule = rule_map["rule"]
+            task = None
+            self.log.info(f"Rule {rule.name}")
+
+            for file, file_tasks in zip(rule_map["files"], rule_map["file_tasks"]):
+                self.log.info(f"  File {file.format()}")
+
+                for task in file_tasks:
+                    task_idx = rule_map["tasks"].index(task)
+                    self.current_task = task_idx
+
                     # Send before_task signal
                     self.signals.send(
                         "before_task", self._new_event_payload(rule=rule, task=task)
@@ -266,12 +305,16 @@ class Runner:
 
                     # Check if user has requested cancel
                     if self.status_request == Status.CANCELLED:
-                        return self.accept(Status.CANCELLED)
+                        break
 
-                    self.current_task = task_idx
+                    # Try the task in a background thread
+                    status = self.try_task(task, dry)
+                    if status == Status.FAILED:
+                        self.set_status(Status.FAILED)
+                        break
 
-                    self.log_task(task)
-                    self.try_task(task, dry)
+            if self.status_request == Status.CANCELLED:
+                return self.accept(Status.CANCELLED)
 
             if self.status == Status.FAILED:
                 self.log.error(f"Cancelling run due to failed task.\n\n{task}\n\n")
@@ -290,7 +333,7 @@ def main():
         rules=get_rules(),
         files=ls("./data/tool", max_depth=2),
     )
-    progress = ProgressDialog.from_runner(runner)
+    ProgressDialog.from_runner(runner)
     runner.run()
 
 

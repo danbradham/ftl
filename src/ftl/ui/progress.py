@@ -1,14 +1,15 @@
 import dearpygui.dearpygui as dpg
 
 from ftl.types import Status
-from ftl.ui.core import Event, Window, center_viewport, delay
+from ftl.ui import core
+from ftl.ui.core import Event, center_viewport, delay
 from ftl.ui.theme import px, set_theme
 
 
-class ProgressDialog(Window):
+class ProgressDialog(core.Window):
     title = "Progress"
-    width = 300
-    height = 116
+    width = 360
+    height = 120
 
     def setup(self):
         self.exit_after = None
@@ -30,13 +31,15 @@ class ProgressDialog(Window):
                 dpg.add_table_column(width_fixed=True)
                 with dpg.table_row():
                     dpg.add_text("", tag="message")
-                    dpg.add_button(label="Cancel", callback=self.on_cancel_pressed)
+                    dpg.add_button(
+                        tag="cancel", label="Cancel", callback=self.on_cancel_pressed
+                    )
 
         # Always on top...
         dpg.set_viewport_always_top(True)
 
         # Centered on screen.
-        center_viewport(px(self.width), px(self.height))
+        center_viewport()
 
     def after_show(self):
         set_theme(self.primary_window, "modal")
@@ -47,6 +50,9 @@ class ProgressDialog(Window):
 
     def on_cancel_pressed(self):
         self.channel.outbox.put(Event("cancel"))
+
+    def fail(self):
+        self.channel.inbox.put(Event("failed", {}))
 
     def cancel(self, label: str | None = None):
         self.channel.inbox.put(Event("cancel", {"label": label}))
@@ -71,8 +77,8 @@ class ProgressDialog(Window):
             )
         )
 
-    def finish(self, label: str | None = None):
-        self.channel.inbox.put(Event("finish", {"label": label, "message": None}))
+    def finish(self, label: str | None = None, message: str | None = None):
+        self.channel.inbox.put(Event("finish", {"label": label, "message": message}))
 
     def event(self, event):
         match event.type:
@@ -82,9 +88,11 @@ class ProgressDialog(Window):
                 dpg.set_value("progress", event.payload["value"] / 100.0)
             case "finish":
                 dpg.set_value("progress", 1.0)
-                self.close()
+                dpg.configure_item("cancel", show=False)
+                self.close(delay=2)
             case "cancel":
-                self.close()
+                dpg.configure_item("cancel", show=True, label="...")
+                self.close(delay=2)
             case _:
                 dpg.set_value("label", f"Unknown event type: {event.type}")
 
@@ -108,11 +116,13 @@ class ProgressDialog(Window):
                 case Status.RUNNING:
                     window.start(label="Running")
                 case Status.SUCCESS:
-                    window.finish(label="Done")
+                    window.finish(label="Done", message="See ya.")
                 case Status.CANCELLED:
                     window.cancel(label="Cancelled")
                 case Status.PENDING:
                     window.start()
+                case Status.FAILED:
+                    window.fail()
 
         def on_runner_progress_changed(event):
             window.set_progress(
@@ -121,7 +131,7 @@ class ProgressDialog(Window):
                 event.payload.get("message", None),
             )
 
-        def on_runner_before_task(event):
+        def check_user_input(event):
             # Process any events received from the ProgressDialog
             if window.channel.outbox.empty():
                 return
@@ -132,12 +142,6 @@ class ProgressDialog(Window):
 
         runner.signals.on("status_changed", on_runner_status_changed)
         runner.signals.on("progress_changed", on_runner_progress_changed)
-        runner.signals.on("before_task", on_runner_before_task)
-
-        while True:
-            ui_event = window.channel.outbox.get()
-            if ui_event.type == "cancel":
-                runner.request(Status.CANCELLED)
-            break
-
+        runner.signals.on("before_task", check_user_input)
+        runner.signals.on("await_task", check_user_input)
         return window
