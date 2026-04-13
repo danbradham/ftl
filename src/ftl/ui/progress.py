@@ -32,7 +32,7 @@ class ProgressDialog(core.Window):
                 with dpg.table_row():
                     dpg.add_text("", tag="message")
                     dpg.add_button(
-                        tag="cancel", label="Cancel", callback=self.on_cancel_pressed
+                        tag="button", label="Cancel", callback=self.on_cancel_pressed
                     )
 
         # Always on top...
@@ -52,7 +52,9 @@ class ProgressDialog(core.Window):
         self.channel.outbox.put(Event("cancel"))
 
     def fail(self):
-        self.channel.inbox.put(Event("failed", {}))
+        self.channel.inbox.put(
+            Event("failed", {"label": "Error", "message": "Failed to encode..."})
+        )
 
     def cancel(self, label: str | None = None):
         self.channel.inbox.put(Event("cancel", {"label": label}))
@@ -88,10 +90,13 @@ class ProgressDialog(core.Window):
                 dpg.set_value("progress", event.payload["value"] / 100.0)
             case "finish":
                 dpg.set_value("progress", 1.0)
-                dpg.configure_item("cancel", show=False)
+                dpg.configure_item("button", show=False)
                 self.close(delay=2)
             case "cancel":
-                dpg.configure_item("cancel", show=True, label="...")
+                dpg.configure_item("button", show=True, label="...")
+                self.close(delay=2)
+            case "failed":
+                dpg.configure_item("button", show=True, label="...")
                 self.close(delay=2)
             case _:
                 dpg.set_value("label", f"Unknown event type: {event.type}")
