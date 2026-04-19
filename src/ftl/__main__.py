@@ -120,14 +120,18 @@ def encode(
         rules=get_rules(),
         files=ls(folder, max_depth=(1, max_depth)[recursive]),
     )
-    progress = ProgressDialog.from_runner(runner)
+    ProgressDialog.from_runner(runner)
     runner.run(dry=dry)
 
     print("Artifacts...")
     artifacts = []
     for r in runner.artifacts:
-        if not r:
+        # Check if artifact actually exists
+        # Any artifact can implement exists to support this check.
+        if not r or (hasattr(r, "exists") and not r.exists()):
             continue
+
+        # Artifacts may support a format method.
         if hasattr(r, "format"):
             artifacts.append(r.format())
         elif isinstance(r, Path):

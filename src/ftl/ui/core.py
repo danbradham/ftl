@@ -133,8 +133,9 @@ class Window(ABC):
         try:
             event = self.channel.inbox.get(False)
             self._handle_event(event)
-            for handler in self.event_handlers.get(event.type, []):
-                handler(self, event)
+            if event:
+                for handler in self.event_handlers.get(event.type, []):
+                    handler(self, event)
         except queue.Empty:
             pass
         self.update()
@@ -167,7 +168,7 @@ class Window(ABC):
         if wait:
             proc.join()
 
-        return cls(**kwargs)
+        return win
 
 
 def refresh_alignments():
@@ -304,8 +305,8 @@ def center_viewport(width: int = -1, height: int = -1):
 
     screen_w, screen_h = pyautogui.size()
 
-    viewport_w = [dpg.get_viewport_client_width(), width][width > -1]
-    viewport_h = [dpg.get_viewport_client_height(), height][height > -1]
+    viewport_w = [dpg.get_viewport_width(), width][width > -1]
+    viewport_h = [dpg.get_viewport_height(), height][height > -1]
 
     x = (screen_w - viewport_w) // 2
     y = (screen_h - viewport_h) // 2

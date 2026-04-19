@@ -7,7 +7,7 @@ from ftl.tasks.core import Task
 
 
 @dataclass
-class RemoveFile(Task):
+class Delete(Task):
     hidden: ClassVar[bool] = True
     include_parent: bool = field(
         default=False,
@@ -18,9 +18,9 @@ class RemoveFile(Task):
 
     def run(self) -> None:
         if self.include_parent:
-            self.log.info(f"Deleting {self.input.path.parent.name}")
+            self.log.info(f"Deleting folder: {self.input.path.parent.name}")
         else:
-            self.log.info(f"Deleting {self.input.name}")
+            self.log.info(f"Deleting file: {self.input.name}")
 
         try:
             if self.include_parent:

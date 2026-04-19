@@ -127,7 +127,12 @@ class EncodeMp4(Task):
         cmd = self.command()
 
         self.log.info(f"{self.input.name} -> {self.output.name}")
-        self.log.info(f"command: {' '.join(cmd)}")
+        self.log.info(f"Folder: {self.folder}")
+        self.log.info(f"Codec: {self.vcodec}")
+        self.log.info(f"Framerate: {self.fps}")
+        self.log.info(f"Max Size: {self.max_size}")
+        self.log.info(f"Background: {self.background}")
+        self.log.debug(f"command: {' '.join(cmd)}")
 
         try:
             subprocess.run(

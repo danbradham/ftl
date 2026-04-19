@@ -102,8 +102,8 @@ class RichFormatter(logging.Formatter):
     formatters = {
         "runner": logging.Formatter("%(message)s"),
         "rule": logging.Formatter("%(rule_name)s %(message)s"),
-        "task_title": logging.Formatter("  %(task_name)s"),
-        "task": logging.Formatter("    %(task_status)s [%(task_progress)3d%%] %(message)s"),
+        "task_title": logging.Formatter("    %(task_name)s %(message)s"),
+        "task": logging.Formatter("      %(task_status)s [%(task_progress)3d%%] %(message)s"),
         "default": logging.Formatter("%(levelname)s | %(message)s")
     }
     # fmt: on
@@ -118,3 +118,19 @@ class RichFormatter(logging.Formatter):
     def format(self, record):
         formatter = self.formatters.get(record.type, self.formatters["default"])
         return self.apply_styles(formatter.format(record))
+
+
+class FileFormatter(logging.Formatter):
+    # fmt: off
+    formatters = {
+        "runner": logging.Formatter("%(message)s"),
+        "rule": logging.Formatter("%(rule_name)s %(message)s"),
+        "task_title": logging.Formatter("    %(task_name)s %(message)s"),
+        "task": logging.Formatter("      %(task_status)s [%(task_progress)3d%%] %(message)s"),
+        "default": logging.Formatter("%(levelname)s | %(message)s")
+    }
+    # fmt: on
+
+    def format(self, record):
+        formatter = self.formatters.get(record.type, self.formatters["default"])
+        return formatter.format(record)
