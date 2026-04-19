@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from typing import ClassVar
 
 from ftl import tools
-from ftl.files import File, FileSequence, as_temp
+from ftl.files import File, FileSequence
 from ftl.tasks.core import Task
 from ftl.tasks.generic import Delete
 from ftl.types import Status
@@ -40,7 +40,9 @@ class OCIODisplay(Task):
         # This method should support creating temporary sequences
         # for File objects. Currently it only handles File -> File
         # or FileSequence -> FileSequence.
-        self.output: FileSequence = as_temp(self.input, suffix=".png")
+        # For file objects, we would need to check if they are videos
+        # if so get the frame range and generate a FileSequence.
+        self.output: File | FileSequence = self.input.as_temp_file(suffix=".png")
         self.temp_folder = self.output.path.parent
 
     def cleanup_task(self) -> Delete:

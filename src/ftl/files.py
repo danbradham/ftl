@@ -51,6 +51,13 @@ class File:
     def exists(self):
         return self.path.exists()
 
+    def as_temp_file(self, suffix: str | None = None) -> File | FileSequence:
+        return remap(
+            self,
+            tempfile.mkdtemp(prefix="ftl_", suffix=suffix),
+            suffix,
+        )
+
     @classmethod
     def from_file(cls, file: PathType):
         path = Path(file)
@@ -85,6 +92,13 @@ class FileSequence:
 
     def exists(self):
         return all(f.exists() for f in self.files)
+
+    def as_temp_file(self, suffix: str | None = None) -> File | FileSequence:
+        return remap(
+            self,
+            tempfile.mkdtemp(prefix="ftl_", suffix=suffix),
+            suffix,
+        )
 
     @classmethod
     def from_file(cls, file: PathType):
@@ -157,14 +171,6 @@ def remap(
             name=file.name.replace(file.suffix, suffix),
             suffix=suffix,
         )
-
-
-def as_temp(file: File | FileSequence, suffix: str | None = None) -> File | FileSequence:
-    return remap(
-        file,
-        tempfile.mkdtemp(prefix="ftl_", suffix=suffix),
-        suffix,
-    )
 
 
 def as_file(file: PathType):
