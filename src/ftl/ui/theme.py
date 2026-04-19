@@ -133,6 +133,7 @@ def get_theme(name="main"):
                     corner_radius,
                     category=dpg.mvThemeCat_Core,
                 )
+
             with dpg.theme_component(dpg.mvButton):
                 dpg.add_theme_style(
                     dpg.mvStyleVar_FrameRounding,
@@ -149,12 +150,14 @@ def get_theme(name="main"):
                 #     (44, 89, 156),
                 #     category=dpg.mvThemeCat_Core,
                 # )
+
             with dpg.theme_component(dpg.mvInputInt):
                 dpg.add_theme_style(
                     dpg.mvStyleVar_FrameRounding,
                     corner_radius,
                     category=dpg.mvThemeCat_Core,
                 )
+
             with dpg.theme_component(dpg.mvCheckbox):
                 dpg.add_theme_style(
                     dpg.mvStyleVar_FrameRounding,
@@ -181,6 +184,19 @@ def get_theme(name="main"):
                     (255, 255, 255, 100),
                     category=dpg.mvThemeCat_Core,
                 )
+
+            with dpg.theme_component(dpg.mvInputFloat, enabled_state=False):
+                dpg.add_theme_color(dpg.mvThemeCol_Text, (57, 57, 57))
+                dpg.add_theme_color(dpg.mvThemeCol_Button, (57, 57, 57))
+
+            with dpg.theme_component(dpg.mvInputInt, enabled_state=False):
+                dpg.add_theme_color(dpg.mvThemeCol_Text, (57, 57, 57))
+                dpg.add_theme_color(dpg.mvThemeCol_Button, (57, 57, 57))
+
+            with dpg.theme_component(dpg.mvInputText, enabled_state=False):
+                dpg.add_theme_color(dpg.mvThemeCol_Text, (57, 57, 57))
+                dpg.add_theme_color(dpg.mvThemeCol_Button, (57, 57, 57))
+
         themes[name] = theme
 
     if name == "modal":

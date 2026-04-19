@@ -135,7 +135,9 @@ class ProgressDialog(Window):
         runner.signals.on("before_task", on_runner_before_task)
 
         while True:
-            window.channel.outbox.get()
+            ui_event = window.channel.outbox.get()
+            if ui_event.type == "cancel":
+                runner.request(Status.CANCELLED)
             break
 
         return window

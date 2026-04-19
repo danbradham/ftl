@@ -103,7 +103,12 @@ def editor():
 
 
 @cli.command()
-def encode(folder: Path = Path("."), recursive: bool = False, max_depth: int = 2):
+def encode(
+    folder: Path = Path("."),
+    recursive: bool = False,
+    max_depth: int = 2,
+    dry: bool = False,
+):
     """Encode a folder of sequences."""
 
     from ftl.files import ls
@@ -116,10 +121,20 @@ def encode(folder: Path = Path("."), recursive: bool = False, max_depth: int = 2
         files=ls(folder, max_depth=(1, max_depth)[recursive]),
     )
     progress = ProgressDialog.from_runner(runner)
-    runner.run()
+    runner.run(dry=dry)
 
     print("Artifacts...")
-    print([r.as_posix() for r in runner.artifacts])
+    artifacts = []
+    for r in runner.artifacts:
+        if not r:
+            continue
+        if hasattr(r, "format"):
+            artifacts.append(r.format())
+        elif isinstance(r, Path):
+            artifacts.append(r.as_posix())
+        else:
+            artifacts.append(str(r))
+    print(artifacts)
 
 
 @cli.command()
@@ -180,12 +195,18 @@ def version():
     except Exception:
         ffmpeg_executable = "FFMPEG not found..."
 
+    # Get OCIO / OIIO info
+    ocio_config = tools.get_ocio_config_name()
+    oiio_version = tools.get_oiio_version()
+
     version_info = {
         "python": sys.version,
         "ftl": version("ftl"),
         "dearpygui": version("dearpygui"),
         "ffmpeg": ffmpeg_version,
         "ffmpeg_exe": ffmpeg_executable,
+        "ocio_config": ocio_config,
+        "oiio_version": oiio_version,
     }
     print(version_info)
 

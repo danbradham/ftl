@@ -3,6 +3,7 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any
 
+from ftl import tasks
 from ftl.files import File, FileSequence, ls
 from ftl.logging import Log, RichFormatter, record_type
 from ftl.rules import Rule
@@ -65,53 +66,90 @@ class Runner:
         # Define signals
         self.signals.define("status_changed", "Status has changed.")
         self.signals.define("progress_changed", "Progress value has changed.")
-        self.signals.define("before_task", "Progress value has changed.")
+        self.signals.define("before_task", "Task about to change...")
 
         # Prepare Runner for invocation
         self._prepare_run(self.files)
 
+    def _add_task(self, task: Task):
+        # Propagate log records
+        task.log.add_filter(self.prepare_record)
+        task.log.add_handler(self.log.handle)
+        # Connect to signals
+        task.signals.on("status_changed", self.on_task_status_changed)
+        # Track task
+        self.tasks_by_id[task.id] = task
+        self.tasks.append(task)
+
     def _prepare_run(self, files: list[File | FileSequence]):
+        # This method prepares the Runner to be executed by filtering
+        # files that are accepted by each of the Runner's Rules,
+        # then generating all the necessary tasks.
+        # This is essential for fine-grained tracking of progress
+        # throughout the encoding pipeline.
+
         enabled_rules = [rule for rule in self.rules if rule.enabled]
         if not enabled_rules:
             raise ValueError("At least one Rule must be enabled...")
 
-        for rule in enabled_rules:
-            if not rule.enabled:
-                continue
+        self.rules_map = [
+            {"rule": rule, "files": [], "tasks": []} for rule in enabled_rules
+        ]
 
-            rule_map = {
-                "rule": rule,
-                "files": [],
-                "tasks": [],
-            }
-            for file in files:
+        for file in files:
+            for rule_map in self.rules_map:
+                rule = rule_map["rule"]
+
                 if not rule.accepts(file):
                     continue
 
+                # Preprocessing Tasks
+                # May include other preprocessors later...
+                # Handle OCIO Color Management
+                ocio_task = None
+                ocio_cleanup_task = None
+                colormanaged_file = None
+                if rule.ocio_enabled:
+                    # Color Conversion task
+                    ocio_task = tasks.OCIODisplay(
+                        input=file,
+                        input_transform=rule.ocio_input_transform,
+                        display_device=rule.ocio_display_device,
+                        view_transform=rule.ocio_view_transform,
+                    )
+                    self._add_task(ocio_task)
+                    rule_map["tasks"].append(ocio_task)
+                    # Cleanup task
+                    ocio_cleanup_task = ocio_task.cleanup_task()
+                    # The expected colormanaged_file
+                    colormanaged_file = ocio_task.output
+
+                # Encoding Tasks
                 rule_map["files"].append(file)
                 for parameterized_task in rule.tasks:
                     task_type = parameterized_task.task
                     task_parameters = parameterized_task.parameters
                     task_parameters["input"] = file
                     task = task_type(**task_parameters)
-
-                    # Propagate log records
-                    task.log.add_filter(self.prepare_record)
-                    task.log.add_handler(self.log.handle)
-                    # Connect to signals
-                    task.signals.on("status_changed", self.on_task_status_changed)
-
+                    self._add_task(task)
                     rule_map["tasks"].append(task)
-                    self.tasks_by_id[task.id] = task
 
-            self.files.extend(rule_map["files"])
-            self.rules_map.append(rule_map)
-            self.tasks.extend(
-                rule_map["tasks"] + [st for t in rule_map["tasks"] for st in t.sub_tasks]
-            )
-            self.tasks_count += len(rule_map["tasks"]) + sum(
-                [len(t.sub_tasks) for t in rule_map["tasks"]]
-            )
+                    # Use color managed input files if available
+                    task.input = colormanaged_file or file
+
+                # Cleanup Tasks
+                if rule.ocio_enabled and ocio_cleanup_task:
+                    self._add_task(ocio_cleanup_task)
+                    rule_map["tasks"].append(ocio_cleanup_task)
+
+                # This ensures we only use one Rule per File or FileSequence
+                # This may or may not be desireable, but it's a reasonable
+                # default for now.
+                # Consider making this a global option once global settings
+                # are introduced. Remember to add global settings...
+                break
+
+        self.tasks_count = len(self.tasks)
 
         handler = logging.StreamHandler()
         handler.setFormatter(RichFormatter())
@@ -155,12 +193,12 @@ class Runner:
         task_index = self.tasks.index(task)
         progress_per_step = 100.0 / self.tasks_count
         progress = event.payload["progress"] / 100.0
+        rule = self.rules_map[self.current_rule]["rule"]
         self.progress = int(task_index * progress_per_step + progress * progress_per_step)
         payload = self._new_event_payload(
             type="progress_changed",
-            label=f"{self.rules[self.current_rule].name}",
-            message=f"{task_index + 1} of {self.tasks_count}",
-            # message=f"{task_index + 1} of {self.tasks_count}: {task.name}",
+            label=f"{rule.name}",
+            message=f"{task_index + 1} of {self.tasks_count} {task.name}",
         )
         self.signals.send("progress_changed", payload)
 
@@ -171,7 +209,7 @@ class Runner:
         record.run_progress = self.progress
 
         # Add rule to record
-        rule = self.rules[self.current_rule]
+        rule = self.rules_map[self.current_rule]["rule"]
         record.rule_name = rule.name
         record.rule_description = rule.description
         record.rule_file_type = rule.file_type
@@ -186,7 +224,11 @@ class Runner:
         # Capture all logging records
         self.log_records.append(record)
 
-    def try_task(self, task):
+    def try_task(self, task, dry=False):
+        if dry:
+            self.artifacts.append(task.output)
+            return
+
         try:
             task()
             self.artifacts.append(task.result)
@@ -194,30 +236,42 @@ class Runner:
             self.set_status(Status.FAILED)
             raise RuntimeError(f"Task failed: {task.name}\n{e}")
 
+    def log_task(self, task):
+        self.log.info("")
+
     def run(self, dry: bool = False):
 
-        self.log.info(f"\nEnabled Rules ({len(self.rules)})")
-        self.log.info("\n".join([f"  {rule.name}" for rule in self.rules]))
+        self.log.info(f"\nEnabled Rules ({len(self.rules_map)})")
+        self.log.info(
+            "\n".join(
+                [f"  [{(' ', '✓')[rule.enabled]}] {rule.name}" for rule in self.rules]
+            )
+        )
 
         self.log.info("\nStarting Run...")
         self.set_status(Status.RUNNING)
 
         for rule_idx, rule_map in enumerate(self.rules_map):
-            self.current_rule = rule_idx
-            rule = rule_map["rule"]
-            self.log.info(f"Rule {rule.name}")
             with record_type(self.log, "rule"):
+                self.current_rule = rule_idx
+                rule = rule_map["rule"]
+                self.log.info("")
+
+            with record_type(self.log, "task_title"):
                 for task_idx, task in enumerate(rule_map["tasks"]):
                     # Send before_task signal
-                    self.signals.send("before_task", self._new_event_payload(task=task))
+                    self.signals.send(
+                        "before_task", self._new_event_payload(rule=rule, task=task)
+                    )
 
                     # Check if user has requested cancel
                     if self.status_request == Status.CANCELLED:
                         return self.accept(Status.CANCELLED)
 
                     self.current_task = task_idx
-                    self.log.info(f"{task.input.name} -> {task.output.name}")
-                    self.try_task(task)
+
+                    self.log_task(task)
+                    self.try_task(task, dry)
 
             if self.status == Status.FAILED:
                 self.log.error(f"Cancelling run due to failed task.\n\n{task}\n\n")

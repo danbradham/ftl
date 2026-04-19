@@ -5,7 +5,7 @@ import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field, fields
 from time import sleep
-from typing import Any, Mapping, Type, get_type_hints
+from typing import Any, ClassVar, Mapping, Type, get_origin, get_type_hints
 
 from typeguard import TypeCheckError, check_type
 
@@ -34,7 +34,7 @@ class Task(ABC):
     """
 
     # Hidden tasks will not show up in the UI...
-    hidden = False
+    hidden: ClassVar[bool] = False
 
     # Shared Task Parameters
     id: str = field(
@@ -58,7 +58,6 @@ class Task(ABC):
     )
     # output: Any = field(
     #     default=None,
-    #     init=False,
     #     metadata={
     #         "hidden": True,
     #         "help": (
@@ -90,6 +89,7 @@ class Task(ABC):
         self.status: Status = Status.PENDING
         self.status_request: Status | None = None
         self.progress = 0
+        self.output = None
         self.result = None
         self.error = None
         self.sub_tasks = []
@@ -130,7 +130,9 @@ class Task(ABC):
         record.task_error = self.error
 
     # Public Interface
-    def set_status(self, status: Status, progress: int | None = None):
+    def set_status(
+        self, status: Status, progress: int | None = None, message: str | None = None
+    ):
         payload = {
             "type": "status_changed",
             "scope": "task",
@@ -142,12 +144,18 @@ class Task(ABC):
         }
         self.status = payload["status"]
         self.progress = payload["progress"]
-        if payload["status"] != payload["prev_status"]:
-            self.log.info(
+        if payload["status"] != payload["prev_status"] and not message:
+            message = (
                 "Status changed from "
                 f"{payload['prev_status'].upper()} to {payload['status'].upper()}."
             )
-            self.signals.send("status_changed", payload)
+        self.log.info(message)
+        self.signals.send("status_changed", payload)
+
+    def set_progress(self, progress: int, message: str | None = None):
+        self.set_status(
+            self.status, progress, message or f"Progress changed to {progress}%"
+        )
 
     def request(self, status):
         self.log.debug(f"{status.upper()} requested...")
@@ -181,6 +189,9 @@ def validate_task_parameters(
 
     errors = {}
     for name, hint in get_type_hints(task).items():
+        if get_origin(hint) is ClassVar:
+            continue
+
         value = parameters.get(name, missing)
         if not ignore_missing and value is missing:
             errors[name] = "Missing argument."

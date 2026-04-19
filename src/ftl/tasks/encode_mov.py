@@ -19,14 +19,6 @@ class EncodeMov(Task):
             "help": "The folder to output the MOV to relative to the source files."
         },
     )
-    input_colorspace: str = field(
-        default="srgb",
-        kw_only=True,
-        metadata={
-            "hidden": True,
-            "help": "The colorspace of the source media.",
-        },
-    )
     vcodec: CodecProres = field(
         default="Prores4444",
         kw_only=True,
@@ -47,6 +39,14 @@ class EncodeMov(Task):
         kw_only=True,
         metadata={
             "help": "The maximum width or height of the output MOV.",
+        },
+    )
+    background: str = field(
+        default="",
+        kw_only=True,
+        metadata={
+            "help": "The background color of the output MOV.\nOnly applies to transparent media.",
+            "param_type": "color",
         },
     )
 
@@ -94,11 +94,22 @@ class EncodeMov(Task):
                 f"scale='{self.max_size}:{self.max_size}:force_original_aspect_ratio=decrease:force_divisible_by=2'"
             )
 
+        filter_graph = ",".join(filters)
+
+        # Background Filter Graph
+        background_graph = ""
+        if self.background:
+            background_graph = (
+                "[s];[s]split=2[bg][fg];"
+                f"[bg]drawbox=c={self.background}@1:replace=1:t=fill[bg];"
+                "[bg][fg]overlay=format=auto"
+            )
+
         # Apply Filter Graph
-        if filters:
+        if filter_graph or background_graph:
             cmd[7:7] = [
-                "-vf",
-                ",".join(filters),
+                "-filter_complex",
+                filter_graph + background_graph,
             ]
 
         # Ensure correct start_number for File Sequences
@@ -113,8 +124,8 @@ class EncodeMov(Task):
 
         cmd = self.command()
 
-        self.log.debug(f"  MOV: {self.input.name} -> {self.output.name}")
-        self.log.debug(f"  CMD: {' '.join(cmd)}")
+        self.log.info(f"{self.input.name} -> {self.output.name}")
+        self.log.info(f"command: {' '.join(cmd)}")
 
         try:
             subprocess.run(

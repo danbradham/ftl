@@ -1,16 +1,17 @@
-from dataclasses import _MISSING_TYPE, dataclass, field
+from dataclasses import _MISSING_TYPE, dataclass
 from logging import warning
-from pathlib import Path
-from typing import Any, Callable, Literal, get_args, get_origin
+from typing import Callable
 
 import dearpygui.dearpygui as dpg
 
+from ftl import tools
 from ftl.rules import Rule
 from ftl.settings import get_settings, save_settings
 from ftl.tasks import parameterize
 from ftl.tasks.core import ParameterizedTask
 from ftl.ui import core
 from ftl.ui.dialogs import ConfirmDialog
+from ftl.ui.params import parameter_from_field_type, parameter_from_type_name
 from ftl.ui.theme import get_theme, px, set_font, set_theme
 
 
@@ -37,6 +38,7 @@ class RuleEditor(core.Window):
         self._unsaved_changes = False
         self.frame = dpg.add_window(tag=self.primary_window, label="Rules Editor")
         self.tasks_list = None
+        self.ocio_control = None
         with core.parent(self.frame):
             self.confirm_delete = ConfirmDialog(
                 tag="confirm_delete",
@@ -228,6 +230,11 @@ class RuleEditor(core.Window):
                         dpg.add_text("Match Video: *.mov *.mp4 *.avi")
                         dpg.add_text("Match ACEScg files: *acescg*")
 
+                    self.ocio_control = OcioControl(
+                        tag="editor_ocio",
+                        callback=lambda: setattr(self, "unsaved_changes", True),
+                    )
+
                     self.tasks_list = TasksList(
                         tag="editor_tasks_list",
                         label="Tasks",
@@ -244,6 +251,10 @@ class RuleEditor(core.Window):
         if self.tasks_list and dpg.does_item_exist(self.tasks_list.tag):
             dpg.delete_item(self.tasks_list.tag)
             self.tasks_list = None
+
+        if self.ocio_control and dpg.does_item_exist(self.ocio_control.tag):
+            dpg.delete_item(self.ocio_control.tag)
+            self.ocio_control = None
 
     def set_rule(self, rule: Rule | None):
         if rule is None:
@@ -267,6 +278,7 @@ class RuleEditor(core.Window):
         dpg.set_value("file_patterns", " ".join(rule.file_patterns))
 
         # Update tasks list
+        self.ocio_control.set_rule(rule)
         self.tasks_list.set_rule(rule)
 
     def on_rule_changed(self, sender, app_data, user_data):
@@ -383,6 +395,92 @@ class RuleEditor(core.Window):
 
 
 @dataclass
+class OcioControl:
+    tag: int | str
+    callback: Callable
+
+    def __post_init__(self):
+        self.setup()
+        self.rule: Rule = None
+        self.body = f"{self.tag}_body"
+
+    def setup(self):
+        self.checkbox = dpg.add_checkbox(
+            label="Enable OCIO",
+            tag=f"{self.tag}_enabled",
+            callback=self.on_enabled,
+        )
+        self.group = dpg.add_group(tag=f"{self.tag}_group")
+
+    def show(self):
+        if not dpg.does_item_exist(self.body):
+            with core.parent(self.group):
+                with dpg.child_window(tag=self.body, height=90, border=False):
+                    self.input_transform = dpg.add_combo(
+                        label="Input Transform",
+                        items=tools.get_ocio_input_transforms(),
+                        tag=f"{self.tag}_input_transform",
+                        callback=self.on_input_changed,
+                    )
+                    self.display_device = dpg.add_combo(
+                        label="Display Device",
+                        items=tools.get_ocio_display_devices(),
+                        tag=f"{self.tag}_display_device",
+                        callback=self.on_display_changed,
+                    )
+                    self.view_transform = dpg.add_combo(
+                        label="View Transform",
+                        tag=f"{self.tag}_view_transform",
+                        callback=self.on_view_changed,
+                    )
+
+        if self.rule:
+            dpg.configure_item(
+                self.view_transform,
+                items=tools.get_ocio_view_transforms(self.rule.ocio_display_device),
+            )
+            dpg.set_value(self.input_transform, self.rule.ocio_input_transform)
+            dpg.set_value(self.display_device, self.rule.ocio_display_device)
+            dpg.set_value(self.view_transform, self.rule.ocio_view_transform)
+
+    def hide(self):
+        if dpg.does_item_exist(self.body):
+            dpg.delete_item(self.body)
+
+    def set_rule(self, rule: Rule):
+        if rule != self.rule:
+            self.rule = rule
+            dpg.set_value(self.checkbox, self.rule.ocio_enabled)
+            if self.rule.ocio_enabled:
+                self.show()
+            else:
+                self.hide()
+
+    def on_enabled(self, sender, app_data, user_data):
+        self.rule.ocio_enabled = app_data
+        if app_data:
+            self.show()
+        else:
+            self.hide()
+        self.callback()
+
+    def on_input_changed(self, sender, app_data, user_data):
+        self.rule.ocio_input_transform = app_data
+        self.callback()
+
+    def on_display_changed(self, sender, app_data, user_data):
+        self.rule.ocio_display_device = app_data
+        views = tools.get_ocio_view_transforms(app_data)
+        dpg.configure_item(self.view_transform, items=views)
+        dpg.set_value(self.view_transform, value=views[0])
+        self.callback()
+
+    def on_view_changed(self, sender, app_data, user_data):
+        self.rule.ocio_view_transform = app_data
+        self.callback()
+
+
+@dataclass
 class TaskItem:
     task: ParameterizedTask
     row: int | str
@@ -393,18 +491,19 @@ class TaskItem:
 class TasksList:
     tag: int | str
     label: str
-    callback: Callable | None = field(default=None)
+    callback: Callable
 
     def __post_init__(self):
         self.setup()
         self.items = []
-        self.rule = None
+        self.rule: Rule = None
 
     def setup(self):
         with dpg.group(tag=self.tag):
             dpg.add_spacer(height=px(20))
             with dpg.group(tag=f"{self.tag}_header", horizontal=True):
-                dpg.add_text(self.label)
+                tag_label = dpg.add_text(self.label)
+                set_font(tag_label, "p", "light")
                 with core.halign(core.RIGHT):
                     dpg.add_button(label="Add Task")
                     add_tasks_menu("add_task_menu", self.on_add_task)
@@ -424,7 +523,7 @@ class TasksList:
     def set_parent(self, tag, after):
         dpg.configure_item(self.tag, parent=tag, after=after, show=True)
 
-    def set_rule(self, rule):
+    def set_rule(self, rule: Rule):
         if rule != self.rule:
             self.clear()
             self.rule = rule
@@ -520,20 +619,25 @@ class TasksList:
                                 default_value=value,
                             )
                             item_tooltip = param.metadata.get("help")
+                            item_param_type = param.metadata.get("param_type")
                             item_id = None
 
-                            hint = get_origin(param.type)
-                            args = get_args(param.type)
-                            if hint == Literal:
-                                item_kwargs["items"] = args
-                                item_id = dpg.add_combo(**item_kwargs)
-                            elif Path in args:
-                                item_id = PathParameter(**item_kwargs)
-                            elif param.type is str:
-                                item_id = dpg.add_input_text(**item_kwargs)
-                            else:
-                                warning(f"Unsupported Parameter type: {param.type}")
-                                print(param)
+                            # Check if param_type explicitly set in metadata
+                            if item_param_type:
+                                item_id = parameter_from_type_name(
+                                    item_param_type, **item_kwargs
+                                )
+
+                            # Autodetect param_type based on field attributes
+                            if not item_id:
+                                item_id = parameter_from_field_type(
+                                    param.type, **item_kwargs
+                                )
+
+                            if not item_id:
+                                warning(
+                                    f"Unsupported Parameter type: {param.name} -> {param.type}"
+                                )
                                 continue
 
                             parameter_items[name] = item_id
@@ -542,7 +646,11 @@ class TasksList:
                             if item_tooltip:
                                 with dpg.tooltip(item_id, delay=0.5):
                                     dpg.add_text(item_tooltip)
-                dpg.add_button(label="Delete", callback=self.remove_task, user_data=task)
+                dpg.add_button(
+                    label="Delete",
+                    callback=self.remove_task,
+                    user_data=task,
+                )
 
         self.items.append(TaskItem(task, row, parameter_items))
 
@@ -553,15 +661,13 @@ class TasksList:
 
         self.rule.tasks.append(task)
         self.add_task(task)
-        if self.callback:
-            self.callback()
+        self.callback()
 
     def on_parameter_changed(self, sender, app_data, user_data):
         task, name = user_data
         value = app_data
         task.parameters[name] = value
-        if self.callback:
-            self.callback()
+        self.callback()
 
 
 def add_tasks_menu(tag: int | str, callback: Callable):
@@ -579,51 +685,6 @@ def add_tasks_menu(tag: int | str, callback: Callable):
             if task.hidden:
                 continue
             dpg.add_selectable(label=name, callback=_callback, user_data=task)
-
-
-def PathParameter(tag, label: str, user_data: Any, callback: Callable, default_value="."):
-    """Construct a PathParameter"""
-
-    group = dpg.add_group(horizontal=True, horizontal_spacing=px(2))
-
-    def browse_for_folder():
-        from ftl.ui.file_selector import FileSelector
-
-        path = FileSelector.get_directory()
-        if path:
-            dpg.set_value(tag, path)
-            callback(group, path, user_data)
-
-    def set_path(path):
-        dpg.set_value(tag, path)
-        callback(group, path, user_data)
-
-    with core.parent(group):
-        dpg.add_input_text(
-            label="",
-            tag=tag,
-            default_value=default_value,
-        )
-        dpg.add_button(
-            label=".",
-            tag=f"{tag}_cwd_button",
-            callback=lambda: set_path("."),
-            width=px(30),
-        )
-        dpg.add_button(
-            label="..",
-            tag=f"{tag}_parent_button",
-            callback=lambda: set_path(".."),
-            width=px(30),
-        )
-        dpg.add_button(
-            label="Folder",
-            tag=f"{tag}_folder_button",
-            callback=browse_for_folder,
-            width=-1,
-        )
-
-    return group
 
 
 def main(style_editor=False):

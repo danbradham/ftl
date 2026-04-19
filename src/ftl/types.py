@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import enum
+from dataclasses import dataclass
 from typing import Literal
 
 Size = Literal[-1, 256, 512, 768, 1024, 1280, 1920, 2048, 2160, 3840, 4096, 6144]
@@ -15,3 +16,22 @@ class Status(enum.StrEnum):
     REVOKED = "revoked"
     CANCELLED = "cancelled"
     DONE = ",".join([SUCCESS, FAILED, REVOKED, CANCELLED])
+
+
+ColorHex = str
+
+
+@dataclass
+class RgbaF:
+    r: float
+    g: float
+    b: float
+    a: float
+
+
+@dataclass
+class Rgba:
+    r: int
+    g: int
+    b: int
+    a: int

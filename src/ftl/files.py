@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import os
 import re
-from dataclasses import dataclass, field
+import tempfile
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Type
 
@@ -63,6 +64,7 @@ class FileSequence:
     stem: str
     suffix: str
     padding: int
+    padding_str: str
     frame_start: int
     frame_end: int
     files: list[Path] = field(repr=False, default_factory=list)
@@ -102,7 +104,8 @@ class FileSequence:
                 frame = int(fmatch.group(1))
                 frames.append(frame)
 
-        name = file.name.replace(match, f"%{padding:0>2d}d")
+        padding_str = f"%{padding:0>2d}d"
+        name = file.name.replace(match, padding_str)
         stem = file.name.split(match)[0].strip(".")
         path = file.with_name(name)
         missing_frames = []
@@ -118,11 +121,44 @@ class FileSequence:
             stem,
             suffix,
             padding,
+            padding_str,
             frames[0],
             frames[-1],
             files,
             missing_frames,
         )
+
+
+def remap(
+    file: File | FileSequence,
+    folder: PathType,
+    suffix: str | None = None,
+) -> File | FileSequence:
+    folder = Path(folder)
+    suffix = suffix or file.suffix
+    if isinstance(file, FileSequence):
+        return replace(
+            file,
+            path=folder / file.name.replace(file.suffix, suffix),
+            name=file.name.replace(file.suffix, suffix),
+            suffix=suffix,
+            files=[folder / f.name.replace(f.suffix, suffix) for f in file.files],
+        )
+    else:
+        return replace(
+            file,
+            path=folder / file.name.replace(file.suffix, suffix),
+            name=file.name.replace(file.suffix, suffix),
+            suffix=suffix,
+        )
+
+
+def as_temp(file: File | FileSequence, suffix: str | None = None) -> File | FileSequence:
+    return remap(
+        file,
+        tempfile.mkdtemp(prefix="ftl_", suffix=suffix),
+        suffix,
+    )
 
 
 def as_file(file: PathType):
