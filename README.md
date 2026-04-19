@@ -65,12 +65,12 @@ FTL streamlines the process of encoding image sequences into video using best pr
 ```
 
 ## A Loose Roadmap
-- [ ] Add logging and progress reporting.
+- [x] Add logging and progress reporting.
 - [ ] Improve exception handling.
 - [ ] Expose support for non-image sequences.
-  - [ ] Convert between video formats
+  - [x] Convert between video formats
   - [ ] Convert to image sequence
-- [ ] Add support for OCIO allowing users to specify input and output transforms.
+- [x] Add support for OCIO allowing users to specify input and output transforms.
 - [ ] Add plugin support to allow users to add custom encodings via Python or Preset json files.
 
 ## Contribute
