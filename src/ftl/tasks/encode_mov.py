@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
-from ftl.files import FileSequence, PathType
+from ftl.files import PathType
 from ftl.tasks.core import Task
 from ftl.tools import get_ffmpeg
 from ftl.types import Fps, Size
@@ -113,7 +113,7 @@ class EncodeMov(Task):
             ]
 
         # Ensure correct start_number for File Sequences
-        if isinstance(self.input, FileSequence):
+        if self.input.is_sequence:
             cmd[1:1] = ["-start_number", str(self.input.frame_start)]
 
         return cmd

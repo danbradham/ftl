@@ -2,7 +2,6 @@ import shutil
 from dataclasses import dataclass, field
 from typing import ClassVar
 
-from ftl.files import FileSequence
 from ftl.tasks.core import Task
 
 
@@ -34,7 +33,7 @@ class Delete(Task):
                     )
                 return
 
-            if isinstance(self.input, FileSequence):
+            if self.input.is_sequence:
                 for file in self.input.files:
                     file.unlink(missing_ok=True)
             else:

@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from typing import ClassVar
 
 from ftl import tools
-from ftl.files import File, FileSequence
+from ftl.files import File
 from ftl.tasks.core import Task
 from ftl.tasks.generic import Delete
 from ftl.types import Status
@@ -42,7 +42,7 @@ class OCIODisplay(Task):
         # or FileSequence -> FileSequence.
         # For file objects, we would need to check if they are videos
         # if so get the frame range and generate a FileSequence.
-        self.output: File | FileSequence = self.input.as_temp_file(suffix=".png")
+        self.output: File = self.input.as_temp_file(suffix=".png")
         self.temp_folder = self.output.path.parent
 
     def cleanup_task(self) -> Delete:
@@ -51,8 +51,8 @@ class OCIODisplay(Task):
             include_parent=True,
         )
 
-    def _format_file_for_oiio(self, file: File | FileSequence) -> str:
-        if isinstance(file, FileSequence):
+    def _format_file_for_oiio(self, file: File) -> str:
+        if file.is_sequence:
             return str(file.path).replace(
                 file.padding_str, f"{file.frame_start}-{file.frame_end}{file.padding_str}"
             )
@@ -60,7 +60,7 @@ class OCIODisplay(Task):
             return str(file.path)
 
     def frame_to_progress(self, frame):
-        if isinstance(self.input, FileSequence):
+        if self.input.is_sequence:
             return (frame - self.input.frame_start) / (
                 self.input.frame_end - self.input.frame_start
             )
@@ -90,7 +90,7 @@ class OCIODisplay(Task):
         # fmt: on
         return cmd
 
-    def run(self) -> File | FileSequence | None:
+    def run(self) -> File | None:
         # Ensure destination directory exists...
         self.output.path.parent.mkdir(parents=True, exist_ok=True)
 

@@ -6,7 +6,7 @@ from threading import Thread
 from typing import Any
 
 from ftl import tasks
-from ftl.files import File, FileSequence, ls
+from ftl.files import File, ls
 from ftl.logging import FileFormatter, Log, RichFormatter, record_type
 from ftl.rules import Rule
 from ftl.settings import USER_DATA_DIR, get_rules
@@ -40,7 +40,7 @@ class Runner:
 
     # User Attributes
     rules: list[Rule]
-    files: list[File | FileSequence]
+    files: list[File]
 
     # Interface Attributes
     signals: Signals = field(default_factory=Signals, init=False, repr=False)
@@ -83,7 +83,7 @@ class Runner:
         self.tasks_by_id[task.id] = task
         self.tasks.append(task)
 
-    def _prepare_run(self, files: list[File | FileSequence]):
+    def _prepare_run(self, files: list[File]):
         # This method prepares the Runner to be executed by filtering
         # files that are accepted by each of the Runner's Rules,
         # then generating all the necessary tasks.

@@ -1,6 +1,6 @@
+from collections.abc import Callable
 from dataclasses import _MISSING_TYPE, dataclass
 from logging import warning
-from typing import Callable
 
 import dearpygui.dearpygui as dpg
 
@@ -343,7 +343,8 @@ class RuleEditor(core.Window):
         self.unsaved_changes = True
 
     def on_add_rule(self, sender, app_data, user_data):
-        for i in range(100):
+        rule_name = "Rule 1"
+        for i in range(1, 100):
             rule_name = f"Rule {len(self.rule_items) + 1 + i}"
             if dpg.does_item_exist(f"rulelist_{rule_name}"):
                 continue

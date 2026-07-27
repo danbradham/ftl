@@ -10,7 +10,7 @@ from typing import Any, ClassVar, Mapping, Type, get_origin, get_type_hints
 from typeguard import TypeCheckError, check_type
 
 from ftl import registry
-from ftl.files import File, FileSequence
+from ftl.files import File
 from ftl.logging import Log
 from ftl.signals import Signals
 from ftl.types import Status
@@ -50,7 +50,7 @@ class Task(ABC):
             "help": "Whether the task is enabled.",
         },
     )
-    input: File | FileSequence = field(
+    input: File = field(
         metadata={
             "hidden": True,
             "help": "The source File or FileSequence to encode.",

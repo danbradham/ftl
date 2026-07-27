@@ -11,6 +11,7 @@ dependencies = [
     "attrs>=25.4.0",
     "cattrs>=25.3.0",
     "dearpygui>=2.1.1",
+    "msgspec>=0.21.1",
     "openimageio>=3.1.11.0",
     "platformdirs>=4.5.1",
     "pyautogui>=0.9.54",

@@ -36,72 +36,73 @@ video_formats = [
 
 @dataclass
 class File:
+    # Shared fields
     path: Path
     name: str
     stem: str
     suffix: str
+
+    # Sequence fields
+    is_sequence: bool = False
+    padding: int = 0
+    padding_str: str = ""
+    frame_start: int = 0
+    frame_end: int = 0
+    files: list[Path] = field(repr=False, default_factory=list)
+    missing_frames: list[int] = field(repr=False, default_factory=list)
 
     def format(self, relative_to: PathType | None = None) -> str:
         if relative_to:
             path = self.path.relative_to(Path(relative_to))
         else:
             path = self.path
-        return f"{path.as_posix()}"
+
+        result = f"{path.as_posix()}"
+        if self.is_sequence:
+            result += " [{self.frame_start}-{self.frame_end}]"
+            if self.missing_frames:
+                result += f"\n  missing {self.missing_frames}"
+        return result
 
     def exists(self):
         return self.path.exists()
 
-    def as_temp_file(self, suffix: str | None = None) -> File | FileSequence:
-        return remap(
-            self,
-            tempfile.mkdtemp(prefix="ftl_", suffix=suffix),
-            suffix,
-        )
-
-    @classmethod
-    def from_file(cls, file: PathType):
-        path = Path(file)
-        name = path.name
-        stem = path.stem
-        suffix = path.suffix
-        return cls(path, name, stem, suffix)
-
-
-@dataclass
-class FileSequence:
-    path: Path
-    name: str
-    stem: str
-    suffix: str
-    padding: int
-    padding_str: str
-    frame_start: int
-    frame_end: int
-    files: list[Path] = field(repr=False, default_factory=list)
-    missing_frames: list[int] = field(default_factory=list)
-
-    def format(self, relative_to: PathType | None = None) -> str:
-        if relative_to:
-            path = self.path.relative_to(Path(relative_to))
+    def remap(
+        self,
+        folder: PathType,
+        suffix: str | None = None,
+    ) -> File:
+        folder = Path(folder)
+        suffix = suffix or self.suffix
+        if self.is_sequence:
+            return replace(
+                self,
+                path=folder / self.name.replace(self.suffix, suffix),
+                name=self.name.replace(self.suffix, suffix),
+                suffix=suffix,
+                files=[folder / f.name.replace(f.suffix, suffix) for f in self.files],
+            )
         else:
-            path = self.path
-        result = f"{path.as_posix()} [{self.frame_start}-{self.frame_end}]"
-        if self.missing_frames:
-            result += f"\n  missing {self.missing_frames}"
-        return result
+            return replace(
+                self,
+                path=folder / self.name.replace(self.suffix, suffix),
+                name=self.name.replace(self.suffix, suffix),
+                suffix=suffix,
+            )
 
-    def exists(self):
-        return all(f.exists() for f in self.files)
-
-    def as_temp_file(self, suffix: str | None = None) -> File | FileSequence:
-        return remap(
-            self,
+    def as_temp_file(self, suffix: str | None = None) -> File:
+        return self.remap(
             tempfile.mkdtemp(prefix="ftl_", suffix=suffix),
             suffix,
         )
 
     @classmethod
-    def from_file(cls, file: PathType):
+    def from_file(cls, file: PathType) -> File:
+        return cls._from_file_sequence(file) or cls._from_file(file)
+
+    # Factory Methods
+    @classmethod
+    def _from_file_sequence(cls, file: PathType) -> File | None:
         file = Path(file)
         # Check if we're dealing with a file sequence pattern...
         match = None
@@ -114,6 +115,7 @@ class FileSequence:
         else:
             return
 
+        is_sequence = True
         padding = len(match)
         suffix = file.suffix
         files = sorted(file.parent.glob(file.name.replace(match, "*")))
@@ -140,6 +142,7 @@ class FileSequence:
             name,
             stem,
             suffix,
+            is_sequence,
             padding,
             padding_str,
             frames[0],
@@ -148,36 +151,24 @@ class FileSequence:
             missing_frames,
         )
 
-
-def remap(
-    file: File | FileSequence,
-    folder: PathType,
-    suffix: str | None = None,
-) -> File | FileSequence:
-    folder = Path(folder)
-    suffix = suffix or file.suffix
-    if isinstance(file, FileSequence):
-        return replace(
-            file,
-            path=folder / file.name.replace(file.suffix, suffix),
-            name=file.name.replace(file.suffix, suffix),
-            suffix=suffix,
-            files=[folder / f.name.replace(f.suffix, suffix) for f in file.files],
-        )
-    else:
-        return replace(
-            file,
-            path=folder / file.name.replace(file.suffix, suffix),
-            name=file.name.replace(file.suffix, suffix),
-            suffix=suffix,
-        )
+    @classmethod
+    def _from_file(cls, file: PathType) -> File:
+        path = Path(file)
+        name = path.name
+        stem = path.stem
+        suffix = path.suffix
+        return cls(path, name, stem, suffix)
 
 
-def as_file(file: PathType):
-    return FileSequence.from_file(file) or File.from_file(file)
+def as_file(file: PathType) -> File:
+    return File.from_file(file)
 
 
-def ls(folder: PathType, max_depth: int = 1) -> list[File | FileSequence]:
+def is_sequence(file: File) -> bool:
+    return file.is_sequence
+
+
+def ls(folder: PathType, max_depth: int = 1) -> list[File]:
     """List of all the File and FileSequences in a folder."""
 
     results = []
@@ -195,7 +186,7 @@ def ls(folder: PathType, max_depth: int = 1) -> list[File | FileSequence]:
 
             f = as_file(file)
             seen.append(file)
-            if isinstance(f, FileSequence):
+            if f.is_sequence:
                 seen.extend(f.files)
 
             results.append(f)
@@ -205,4 +196,4 @@ def ls(folder: PathType, max_depth: int = 1) -> list[File | FileSequence]:
     )
 
 
-FileType = Type[File] | Type[FileSequence]
+FileType = Type[File]

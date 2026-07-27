@@ -10,7 +10,6 @@ from cattrs import (
 )
 
 from ftl import registry, tools
-from ftl.files import File, FileSequence
 from ftl.tasks import ParameterizedTask
 
 
@@ -55,10 +54,9 @@ class Rule:
         return self.name.lower().replace(" ", "_")
 
     def accepts(self, file):
-        file_type = (File, FileSequence)[self.file_type == "FileSequence"]
-        is_file_type = isinstance(file, file_type)
+        is_correct_file_type = file.is_sequence == self.file_type == "FileSequence"
         has_pattern_match = any([fnmatch(file.name, pat) for pat in self.file_patterns])
-        return is_file_type and has_pattern_match
+        return is_correct_file_type and has_pattern_match
 
     @classmethod
     def from_dict(cls, data):
