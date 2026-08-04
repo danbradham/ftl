@@ -1,6 +1,7 @@
+from collections.abc import Mapping
 from dataclasses import dataclass, field, is_dataclass
 from fnmatch import fnmatch
-from typing import Any, Literal, Mapping, get_type_hints
+from typing import Any, Literal, get_type_hints
 
 from cattrs import (
     register_structure_hook,
@@ -54,9 +55,22 @@ class Rule:
         return self.name.lower().replace(" ", "_")
 
     def accepts(self, file):
-        is_correct_file_type = file.is_sequence == self.file_type == "FileSequence"
-        has_pattern_match = any([fnmatch(file.name, pat) for pat in self.file_patterns])
-        return is_correct_file_type and has_pattern_match
+        is_correct_file_type = file.is_sequence == (self.file_type == "FileSequence")
+
+        # Evaluate file_patterns to check if the file can be
+        # accepted by this rule.
+        is_included = False
+        for pat in self.file_patterns:
+            # Patterns that start with ! are exlusion patterns
+            if pat.startswith("!") and fnmatch(file.name, pat.lstrip("!")):
+                is_included = False
+                break
+
+            # Check if file name matches the inclusion pattern
+            if fnmatch(file.name, pat):
+                is_included = True
+
+        return is_correct_file_type and is_included
 
     @classmethod
     def from_dict(cls, data):
@@ -133,7 +147,7 @@ def structure_parameterized_task(val: Any, _) -> ParameterizedTask:
     hints = get_type_hints(task)
     for key, value in val["parameters"].items():
         hint = hints.get(key)
-        if is_dataclass(hint) and isinstance(value, Mapping):
+        if is_dataclass(hint) and isinstance(hint, type) and isinstance(value, Mapping):
             parameters[key] = hint(**value)
         else:
             parameters[key] = unstructure(value, hint)

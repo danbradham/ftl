@@ -77,12 +77,19 @@ dependencies = [
     { name = "cattrs" },
     { name = "dearpygui" },
     { name = "msgspec" },
+    { name = "opencolorio" },
     { name = "openimageio" },
     { name = "platformdirs" },
     { name = "pyautogui" },
+    { name = "pyside6" },
     { name = "pytest" },
     { name = "typeguard" },
     { name = "typer" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "types-oiio-python" },
 ]
 
 [package.metadata]
@@ -91,13 +98,18 @@ requires-dist = [
     { name = "cattrs", specifier = ">=25.3.0" },
     { name = "dearpygui", specifier = ">=2.1.1" },
     { name = "msgspec", specifier = ">=0.21.1" },
+    { name = "opencolorio", specifier = ">=2.5.2" },
     { name = "openimageio", specifier = ">=3.1.11.0" },
     { name = "platformdirs", specifier = ">=4.5.1" },
     { name = "pyautogui", specifier = ">=0.9.54" },
+    { name = "pyside6", specifier = ">=6.11.1" },
     { name = "pytest", specifier = ">=9.0.2" },
     { name = "typeguard", specifier = ">=4.4.4" },
     { name = "typer", specifier = ">=0.21.1" },
 ]
+
+[package.metadata.requires-dev]
+dev = [{ name = "types-oiio-python", specifier = ">=3.0.10.0.1" }]
 
 [[package]]
 name = "iniconfig"
@@ -265,6 +277,38 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/58/ad/1100d7229bb248394939a12a8074d485b655e8ed44207d328fdd7fcebc7b/numpy-2.4.3-pp311-pypy311_pp73-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:7e58765ad74dcebd3ef0208a5078fba32dc8ec3578fe84a604432950cd043d79", size = 15800434, upload-time = "2026-03-09T07:58:44.837Z" },
     { url = "https://files.pythonhosted.org/packages/0c/fd/16d710c085d28ba4feaf29ac60c936c9d662e390344f94a6beaa2ac9899b/numpy-2.4.3-pp311-pypy311_pp73-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:8e236dbda4e1d319d681afcbb136c0c4a8e0f1a5c58ceec2adebb547357fe857", size = 16729409, upload-time = "2026-03-09T07:58:47.972Z" },
     { url = "https://files.pythonhosted.org/packages/57/a7/b35835e278c18b85206834b3aa3abe68e77a98769c59233d1f6300284781/numpy-2.4.3-pp311-pypy311_pp73-win_amd64.whl", hash = "sha256:4b42639cdde6d24e732ff823a3fa5b701d8acad89c4142bc1d0bd6dc85200ba5", size = 12504685, upload-time = "2026-03-09T07:58:50.525Z" },
+]
+
+[[package]]
+name = "opencolorio"
+version = "2.5.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/6a/ea/9d930df6740f9b09b0b342f40a5ef165da5050141e496081ef80b302e566/opencolorio-2.5.2.tar.gz", hash = "sha256:fecebd0914089b0c8238c55648f8eb2ccd2702ab4b2eea53856a0e368ded8262", size = 13946157, upload-time = "2026-05-13T18:49:47.351Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/eb/a3/35608bec4739d4d056a89400323e26e29f497591b82514c3a686e572bb9c/opencolorio-2.5.2-cp311-cp311-macosx_10_15_x86_64.whl", hash = "sha256:11636d2ae5d90d676023a24bd12622833b3221ee5bb57e7df62cdfca2de6998d", size = 6326953, upload-time = "2026-05-13T18:49:00.682Z" },
+    { url = "https://files.pythonhosted.org/packages/72/ed/6d3132666d3ac5913a96da1f5582748f36a7bdf13f968506527d814f0a88/opencolorio-2.5.2-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:d764b3064498974624f68be6182f10f0a5fd8f084a38f468eab7ec6cc6db078d", size = 5699336, upload-time = "2026-05-13T18:49:02.241Z" },
+    { url = "https://files.pythonhosted.org/packages/09/49/04ed8e93bac305e9eceba55a06d958c6ab83dbb22823e5cd7a02c7382afd/opencolorio-2.5.2-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:8e6a53e12605e929ba3c7dfbfbbe03664f3427f2119aaec495265aad275a6391", size = 6273589, upload-time = "2026-05-13T18:49:03.825Z" },
+    { url = "https://files.pythonhosted.org/packages/7e/52/168c51de1837e6987ecd8a21badb157bf371e3fd0391bd4c0534d2b91c3a/opencolorio-2.5.2-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:18d76fee8e245af2d3302462ca2f9baafa6cb3fc11578e8888063a7f32774061", size = 6845852, upload-time = "2026-05-13T18:49:05.5Z" },
+    { url = "https://files.pythonhosted.org/packages/c2/65/485d96a4a4273dd2448d3be5585b46d0a58caac472050889f415120317e5/opencolorio-2.5.2-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:35488faa982d89933cd430697ab68f40c439f1456780f46d09fec7c4b981fea3", size = 6897301, upload-time = "2026-05-13T18:49:06.889Z" },
+    { url = "https://files.pythonhosted.org/packages/bb/14/39e65d4cdbba0f453384e77ce9e67568dc1e651145141338020a6d4bb3c0/opencolorio-2.5.2-cp311-cp311-win_amd64.whl", hash = "sha256:a1f0f18fe0897255059296782a895c57ca639e37d2ba3022cf39bf2b26e01155", size = 3863270, upload-time = "2026-05-13T18:49:08.724Z" },
+    { url = "https://files.pythonhosted.org/packages/82/70/ee3ada349863f668cbd4897f01d8dd6305407572111c5355f28dc5b5001a/opencolorio-2.5.2-cp312-cp312-macosx_10_15_x86_64.whl", hash = "sha256:72c5ff68430f11d1cef8fb792d1167cb840ccd6da2aade6bbe6c3c9d7088eb56", size = 6358645, upload-time = "2026-05-13T18:49:10.037Z" },
+    { url = "https://files.pythonhosted.org/packages/cd/a0/d427d4e921389a1b119b22fc9296313f9006af789e8e29531f52132bdfcc/opencolorio-2.5.2-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:53f8098188a8fe434c4831138e818e6b53ae00599b8a537ef4eb1f3288af276b", size = 5720088, upload-time = "2026-05-13T18:49:11.418Z" },
+    { url = "https://files.pythonhosted.org/packages/a0/68/6b9b5d4bd54de8933cfcf9b1854967da0740d7b493783f9f9f7f41f43d6e/opencolorio-2.5.2-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:b84e0653e59686ccbdbec1b4b857946f2f126f3bccbb25921649beefdb4bd763", size = 6251103, upload-time = "2026-05-13T18:49:13.088Z" },
+    { url = "https://files.pythonhosted.org/packages/63/a5/ea77ac1f8ba17503b113b4334d3b1f10cba32104d0f741d6694e8ee2564a/opencolorio-2.5.2-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:cc34db609bd91fb43747d2f425d020d6d17afed406669703bab2af08c149ddac", size = 6828941, upload-time = "2026-05-13T18:49:14.594Z" },
+    { url = "https://files.pythonhosted.org/packages/c2/57/29ffadf7bf9c6a65a884be18933864a1a3e6ff165127bf1acff9930b97ee/opencolorio-2.5.2-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:3d0ab1c398d560513c651c7b9c676e68f264a63b97e29fec21722d4270f865aa", size = 6932093, upload-time = "2026-05-13T18:49:16.252Z" },
+    { url = "https://files.pythonhosted.org/packages/5a/1d/1f1f5ce05a55168d0528ed0fdc89dd60a82664fff0cbc4061a05689406cf/opencolorio-2.5.2-cp312-cp312-win_amd64.whl", hash = "sha256:96b0b01713d759c2ddc0f57229a1bb599d72298746cdeff9512abc46a079494f", size = 3865142, upload-time = "2026-05-13T18:49:17.57Z" },
+    { url = "https://files.pythonhosted.org/packages/9b/20/0c1fef5372e7184bd37eccb240f2ce80347cb8feb15373d721722c082786/opencolorio-2.5.2-cp313-cp313-macosx_10_15_x86_64.whl", hash = "sha256:d1a5ca15950a56bfaa6e061865e5550659522a86c31b4459fe29c6cc4f11eec4", size = 6358789, upload-time = "2026-05-13T18:49:19.21Z" },
+    { url = "https://files.pythonhosted.org/packages/70/c4/5f0aef0fc6e89cf518eea6fbc0942542d54a80ce0a46a02abdae911bb2bf/opencolorio-2.5.2-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:bdc60c73e35e9fa25ecb777906b68d098fc7845b9ffbeaf6bc67b73e42bee79b", size = 5720294, upload-time = "2026-05-13T18:49:20.903Z" },
+    { url = "https://files.pythonhosted.org/packages/3d/98/ce372b2eb35079dea3b1f088b514082bf92d9642d425e29227d5efa869c1/opencolorio-2.5.2-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:0a690efa269a5310b5e70c930380be02d56ffdb287a33b13f81bcdbcbfe27566", size = 6251862, upload-time = "2026-05-13T18:49:22.282Z" },
+    { url = "https://files.pythonhosted.org/packages/14/cd/64994fa3d24bf4f76fbd8517249fd3e5b0983f552a5c784b3a1f42cdf4dc/opencolorio-2.5.2-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:36265c9539ef8317e6b4a7750c155286b6376626f7af67f98c536a5a20273871", size = 6825599, upload-time = "2026-05-13T18:49:23.654Z" },
+    { url = "https://files.pythonhosted.org/packages/fe/6c/bca59902d1cf151dab890ca75312b85f3a86724230348de2447a1cc93475/opencolorio-2.5.2-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:b7d7494a311bf38bd3311d2bcb37c1409c5a0961559bcb802c90656edf96e379", size = 6941010, upload-time = "2026-05-13T18:49:25.267Z" },
+    { url = "https://files.pythonhosted.org/packages/46/3b/4ba827c2d740a904cc93376694c5ac735d3e90bb7128783970f8c3807856/opencolorio-2.5.2-cp313-cp313-win_amd64.whl", hash = "sha256:47a68600bb159c2a4a824752c25554ca4f3847089cbc226d05478e284cec17c3", size = 3865124, upload-time = "2026-05-13T18:49:26.825Z" },
+    { url = "https://files.pythonhosted.org/packages/ec/96/ac466b577fe45334381848ef5cebbcaa1ad7c716a2f225627b53362f0a0d/opencolorio-2.5.2-cp314-cp314-macosx_10_15_x86_64.whl", hash = "sha256:43957589095a3fa5cbfa1faa3d7da39da6c898b9a2d98207adc5ab92734e10b3", size = 6358779, upload-time = "2026-05-13T18:49:28.176Z" },
+    { url = "https://files.pythonhosted.org/packages/0c/62/22d9fc33dafd72f40f9320db119e68c6ca8e5031702f334ffa8f7814cb0b/opencolorio-2.5.2-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:142eafd6c31aa7da3c97d2af5ce0403ccd2859be1252336ef9a2aea9a5082dce", size = 5713109, upload-time = "2026-05-13T18:49:29.716Z" },
+    { url = "https://files.pythonhosted.org/packages/d6/3e/d8bff675d02fada4b8b68fb5c2334de11f8829ccc3afd45aa42e75d237a0/opencolorio-2.5.2-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:91a831f3ebcb1b3a67320a022f927c6a1811df68bad8d2c9730462b76b113b88", size = 6264662, upload-time = "2026-05-13T18:49:31.611Z" },
+    { url = "https://files.pythonhosted.org/packages/dc/45/cd3b391843bb4dd2fbe4b8e324472cbbdcb5d198abfda0d81948a83532bb/opencolorio-2.5.2-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:b5f8c408f6dfb8561f6b30471eb0591742921edbc8b9e4caaa2b92cebe580c38", size = 6827981, upload-time = "2026-05-13T18:49:32.945Z" },
+    { url = "https://files.pythonhosted.org/packages/8e/90/6e8f3a0bba909754112514fce6f2baf9d5ba99fff71cc2bea00e621e6bba/opencolorio-2.5.2-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:e1ede691d5263d3fc3c796bfff29f07042ac724d25675b031dd305ff5461366f", size = 6943716, upload-time = "2026-05-13T18:49:34.436Z" },
+    { url = "https://files.pythonhosted.org/packages/cd/db/5327b1e96d4bdfd5793976f8626edc9c81497b95f50b67f5a5f8a11ce6f0/opencolorio-2.5.2-cp314-cp314-win_amd64.whl", hash = "sha256:076536f95c02911dcd32a5fd7033e5c3261d88a1aca7e40f4fd6093b99622f4b", size = 4032919, upload-time = "2026-05-13T18:49:36.219Z" },
 ]
 
 [[package]]
@@ -529,6 +573,54 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/ee/f0/cb456ac4f1a73723d5b866933b7986f02bacea27516629c00f8e7da94c2d/pyscreeze-1.0.1.tar.gz", hash = "sha256:cf1662710f1b46aa5ff229ee23f367da9e20af4a78e6e365bee973cad0ead4be", size = 27826, upload-time = "2024-08-20T23:03:07.291Z" }
 
 [[package]]
+name = "pyside6"
+version = "6.11.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pyside6-addons" },
+    { name = "pyside6-essentials" },
+    { name = "shiboken6" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/da/a6/27ba5947ed48918f7b74b7c43a1e280aac069e36f25adeb4c9adfac835c4/pyside6-6.11.1-cp310-abi3-macosx_13_0_universal2.whl", hash = "sha256:537682c3b7530817203e667c1f5a2f00486b37bf52c52eeab438544c7a0917f6", size = 571921, upload-time = "2026-05-13T09:47:36.402Z" },
+    { url = "https://files.pythonhosted.org/packages/d8/de/af89d71410c83b10654d86ff9aff2a4f87c30163658f1cc145242e222526/pyside6-6.11.1-cp310-abi3-manylinux_2_34_x86_64.whl", hash = "sha256:b1fc521ba2bb5109425ab8add06bddbdd524abcad06cfa012cc39a22a189feb2", size = 572102, upload-time = "2026-05-13T09:47:38.249Z" },
+    { url = "https://files.pythonhosted.org/packages/b6/0e/d583bd3f7bf5046a4497b36f3902cfb64aa29554489a5a25c18e6b4ac0ac/pyside6-6.11.1-cp310-abi3-manylinux_2_39_aarch64.whl", hash = "sha256:75f0005c3eb95c07cfb65522ec50d0815ac007a96482c21dc3cb4b4c04895d84", size = 572098, upload-time = "2026-05-13T09:47:39.44Z" },
+    { url = "https://files.pythonhosted.org/packages/57/f2/d9d8ce1373dabb37e5919f63cd18446556079631d3f2eea3ada03c29f6b8/pyside6-6.11.1-cp310-abi3-win_amd64.whl", hash = "sha256:0968877ab1fb4ef3587a284da6fe05e8647ada56a6a3750b6395188e01f4aba6", size = 578377, upload-time = "2026-05-13T09:47:40.76Z" },
+    { url = "https://files.pythonhosted.org/packages/96/02/a6057d8bd2bdb1940820fff2d627fdf4013148c9c57adf69fa40d3452ac3/pyside6-6.11.1-cp310-abi3-win_arm64.whl", hash = "sha256:acee467cb5f256cc47ebb9d815a054c1d8416da380c191b247a76d164aa3f805", size = 561765, upload-time = "2026-05-13T09:47:41.9Z" },
+]
+
+[[package]]
+name = "pyside6-addons"
+version = "6.11.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pyside6-essentials" },
+    { name = "shiboken6" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/3f/6b/8bc94aff48b63f788f2d84e5467c12362d68906ba742c0942f46cb04c879/pyside6_addons-6.11.1-cp310-abi3-macosx_13_0_universal2.whl", hash = "sha256:54733c77f789bef5f03c6aff4ad3bec8b2eff021f0cfcbc53d5e6c250ded24f9", size = 331714589, upload-time = "2026-05-13T09:39:12.36Z" },
+    { url = "https://files.pythonhosted.org/packages/dd/62/fb1428a523b2a4541e232aab50d9e789e6b4526f37fd9593452a7ea5b6b3/pyside6_addons-6.11.1-cp310-abi3-manylinux_2_34_x86_64.whl", hash = "sha256:8e6c65fbd73a512d6f72cda8d8277444a85a34dc99dd1dae9c21d35b8671bb1f", size = 175063224, upload-time = "2026-05-13T09:39:34.185Z" },
+    { url = "https://files.pythonhosted.org/packages/ee/9b/2ccd52f66db55c06de65d0501170a1935d04d64d0a230c0d892284a02ce3/pyside6_addons-6.11.1-cp310-abi3-manylinux_2_39_aarch64.whl", hash = "sha256:bf1c6c4e954e5eba3d2a7c661ad4b9689e8f09c7f4a16bdf29713371d11af993", size = 170553429, upload-time = "2026-05-13T09:39:54.424Z" },
+    { url = "https://files.pythonhosted.org/packages/9a/bd/8adc4d350b3b363f3dfc8fccdcf5bfed25f7e36c2fff30c64e106f4f1572/pyside6_addons-6.11.1-cp310-abi3-win_amd64.whl", hash = "sha256:0d13c4dfd671b050a48e4f8d8ddc724b7248f9c0437e7fc47fdf316278572923", size = 168816308, upload-time = "2026-05-13T09:40:13.541Z" },
+    { url = "https://files.pythonhosted.org/packages/65/b7/9a840d97f0f0f04e372a87e205dd30ee285b4e3b021b188459a917c9dc76/pyside6_addons-6.11.1-cp310-abi3-win_arm64.whl", hash = "sha256:3494f480dee92f415be2f2d989c0b3f4755ac332b28045cbf4ba0f5c5a22ba37", size = 35759347, upload-time = "2026-05-13T09:40:21.199Z" },
+]
+
+[[package]]
+name = "pyside6-essentials"
+version = "6.11.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "shiboken6" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b3/da/10d9197e7370eb4fed8df5fc547b7548dec88e5c5949e2d450db4ae96feb/pyside6_essentials-6.11.1-cp310-abi3-macosx_13_0_universal2.whl", hash = "sha256:228de53c2bc26b07e5021fbe3614fc44ca08e4dab9999af08c2b389d2c239957", size = 110352945, upload-time = "2026-05-13T09:43:08.006Z" },
+    { url = "https://files.pythonhosted.org/packages/5c/49/0e1237c4400bec7e335d2c4eeb49bc40d9fd88a9ac44ca9083ce1abdc308/pyside6_essentials-6.11.1-cp310-abi3-manylinux_2_34_x86_64.whl", hash = "sha256:e3ef7027b41e4e55fadb56e3b3257dc8ee92154b639fe67fc4c8e05e9d976c60", size = 79908535, upload-time = "2026-05-13T09:43:24.836Z" },
+    { url = "https://files.pythonhosted.org/packages/4c/c5/da4c5f23c6540ac5211a1f60177c8dee84b1bf40f2719479587ab8c60731/pyside6_essentials-6.11.1-cp310-abi3-manylinux_2_39_aarch64.whl", hash = "sha256:a039b6da68a3a4b9d243217b2b98d475eed3f617159ef6be925badab53c11b0d", size = 78960051, upload-time = "2026-05-13T09:43:35.423Z" },
+    { url = "https://files.pythonhosted.org/packages/64/0e/b663ecc96ca57b5c91b83b6615d6b174380b0faf30338125c26e053d6aa7/pyside6_essentials-6.11.1-cp310-abi3-win_amd64.whl", hash = "sha256:63311bd48e32c584599ab04b9ef7c324082374cd2c9fa533f978fb893bb47e40", size = 77549267, upload-time = "2026-05-13T09:43:44.92Z" },
+    { url = "https://files.pythonhosted.org/packages/f1/12/eb6723faf5cb7fa581145da1c15f40d641b96e080f0491af2f1859fdeedb/pyside6_essentials-6.11.1-cp310-abi3-win_arm64.whl", hash = "sha256:11253ea52aabecefe9febddbbe78b43a824129e3af1cec98431028fba7fa954f", size = 57964512, upload-time = "2026-05-13T09:43:52.968Z" },
+]
+
+[[package]]
 name = "pytest"
 version = "9.0.2"
 source = { registry = "https://pypi.org/simple" }
@@ -588,6 +680,18 @@ wheels = [
 ]
 
 [[package]]
+name = "shiboken6"
+version = "6.11.1"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/17/f3/f2b63df0251e7cd3172ea28e32ede52739de9566bcefcd0178681538ac81/shiboken6-6.11.1-cp310-abi3-macosx_13_0_universal2.whl", hash = "sha256:1a16867f103ef1c662a5f09dfed03273a9f81688b174555162c58e83650a3f02", size = 476874, upload-time = "2026-05-13T09:47:01.091Z" },
+    { url = "https://files.pythonhosted.org/packages/c7/9b/e0355d8897b5c150770f1d95718aad17d432fcc9c035c04f3f58427d4693/shiboken6-6.11.1-cp310-abi3-manylinux_2_34_x86_64.whl", hash = "sha256:9a8bccfafc8805254cabcfa1edfaf55cd52889f4998c91ad0d9a4433fb1bcdbe", size = 272222, upload-time = "2026-05-13T09:47:02.653Z" },
+    { url = "https://files.pythonhosted.org/packages/57/d5/dd4f1defed400be03340f2ede34b61f846776650b4e7ed9ebaf4c71979a2/shiboken6-6.11.1-cp310-abi3-manylinux_2_39_aarch64.whl", hash = "sha256:1bd2f4314414df2d122d9f646e03b731bc6d6b5f77a5f53f99a4fe4e97d84e6f", size = 270350, upload-time = "2026-05-13T09:47:04.02Z" },
+    { url = "https://files.pythonhosted.org/packages/52/b5/3f6fb2ee65b534193fb4ef713dd619dc31dadff5d12c16979a7699ad58be/shiboken6-6.11.1-cp310-abi3-win_amd64.whl", hash = "sha256:c2c6863aa80ec18c0f82cea3417837b279cdc60024ac17123461dc9042577df7", size = 1223647, upload-time = "2026-05-13T09:47:05.924Z" },
+    { url = "https://files.pythonhosted.org/packages/98/d1/f15ca0e1666faae02c945f48e745ea35f8fcd8243b176109b4e2c4251f47/shiboken6-6.11.1-cp310-abi3-win_arm64.whl", hash = "sha256:7c8d9af17db4495d4fa5b1c393f218311c4855546b9dfa6a0bd21bcd66b55e9d", size = 1784170, upload-time = "2026-05-13T09:47:07.617Z" },
+]
+
+[[package]]
 name = "typeguard"
 version = "4.4.4"
 source = { registry = "https://pypi.org/simple" }
@@ -612,6 +716,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/36/bf/8825b5929afd84d0dabd606c67cd57b8388cb3ec385f7ef19c5cc2202069/typer-0.21.1.tar.gz", hash = "sha256:ea835607cd752343b6b2b7ce676893e5a0324082268b48f27aa058bdb7d2145d", size = 110371, upload-time = "2026-01-06T11:21:10.989Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a0/1d/d9257dd49ff2ca23ea5f132edf1281a0c4f9de8a762b9ae399b670a59235/typer-0.21.1-py3-none-any.whl", hash = "sha256:7985e89081c636b88d172c2ee0cfe33c253160994d47bdfdc302defd7d1f1d01", size = 47381, upload-time = "2026-01-06T11:21:09.824Z" },
+]
+
+[[package]]
+name = "types-oiio-python"
+version = "3.0.10.0.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/0b/fc/efaeff602d100f3af737860004293c8b7e50bc049f952a348bede564ae14/types_oiio_python-3.0.10.0.1.tar.gz", hash = "sha256:fbe643d2c84a89a270763e38279e0b2164ddafa736d8721421c9e274aaf46e42", size = 30476, upload-time = "2025-09-07T16:13:06.648Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/99/22/6e9ed55ff638bfcbce3993e395063af1f3139d75516d9d7c265d07264b71/types_oiio_python-3.0.10.0.1-py3-none-any.whl", hash = "sha256:a0db017f2f9dca807e4e255bcd61197f0ac8cddf4ceade94ee4f6a6feedbaffd", size = 29482, upload-time = "2025-09-07T16:13:05.598Z" },
 ]
 
 [[package]]

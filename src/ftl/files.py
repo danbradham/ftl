@@ -5,7 +5,6 @@ import re
 import tempfile
 from dataclasses import dataclass, field, replace
 from pathlib import Path
-from typing import Type
 
 PathType = Path | os.PathLike | str
 
@@ -52,6 +51,15 @@ class File:
     missing_frames: list[int] = field(repr=False, default_factory=list)
 
     def format(self, relative_to: PathType | None = None) -> str:
+        """Format the File object's path as a string.
+
+        Examples:
+            /path/to/file.mov
+            /path/to/other_file.%04d.exr [1-120]
+            /path/to/other_file.%04d.png [1-90]
+              missing [24, 33, 72]
+        """
+
         if relative_to:
             path = self.path.relative_to(Path(relative_to))
         else:
@@ -59,19 +67,31 @@ class File:
 
         result = f"{path.as_posix()}"
         if self.is_sequence:
-            result += " [{self.frame_start}-{self.frame_end}]"
+            result += f" [{self.frame_start}-{self.frame_end}]"
             if self.missing_frames:
                 result += f"\n  missing {self.missing_frames}"
         return result
 
     def exists(self):
-        return self.path.exists()
+        """Check if a File object exists on disk."""
+
+        if self.is_sequence:
+            return all(f.exists() for f in self.files)
+        else:
+            return self.path.exists()
 
     def remap(
         self,
         folder: PathType,
         suffix: str | None = None,
     ) -> File:
+        """Remaps a File object to a new folder.
+
+        Example:
+            file = File.from_path("/path/to/file.%04d.png)
+            remapped = file.remap("/another/path", suffix=".exr")
+        """
+
         folder = Path(folder)
         suffix = suffix or self.suffix
         if self.is_sequence:
@@ -91,45 +111,57 @@ class File:
             )
 
     def as_temp_file(self, suffix: str | None = None) -> File:
+        """Remap a File object to a temporary folder."""
+
         return self.remap(
             tempfile.mkdtemp(prefix="ftl_", suffix=suffix),
             suffix,
         )
 
-    @classmethod
-    def from_file(cls, file: PathType) -> File:
-        return cls._from_file_sequence(file) or cls._from_file(file)
-
     # Factory Methods
     @classmethod
-    def _from_file_sequence(cls, file: PathType) -> File | None:
-        file = Path(file)
+    def from_path(cls, path: PathType) -> File:
+        """Constructs a File object from a pathlib.Path object or an os.PathLike."""
+
+        return cls._from_path_sequence(path) or cls._from_path(path)
+
+    @classmethod
+    def _from_path(cls, path: PathType) -> File:
+        path = Path(path)
+        name = path.name
+        stem = path.stem
+        suffix = path.suffix
+        return cls(path, name, stem, suffix)
+
+    @classmethod
+    def _from_path_sequence(cls, path: PathType) -> File | None:
+        path = Path(path)
         # Check if we're dealing with a file sequence pattern...
         match = None
-        if matches := re.findall(r"#+", file.as_posix()):
-            match = matches[-1]
-        elif matches := re.findall(r"%\d+d", file.as_posix()):
-            match = matches[-1]
-        elif matches := re.findall(r"\.(\d+)\.", file.as_posix()):
+        if (
+            (matches := re.findall(r"#+", path.as_posix()))
+            or (matches := re.findall(r"%\d+d", path.as_posix()))
+            or (matches := re.findall(r"\.(\d+)\.", path.as_posix()))
+        ):
             match = matches[-1]
         else:
             return
 
         is_sequence = True
         padding = len(match)
-        suffix = file.suffix
-        files = sorted(file.parent.glob(file.name.replace(match, "*")))
+        suffix = path.suffix
+        files = sorted(path.parent.glob(path.name.replace(match, "*")))
         frames = []
-        frame_re = re.compile(file.as_posix().replace(match, r"(\d+)"))
+        frame_re = re.compile(path.as_posix().replace(match, r"(\d+)"))
         for f in files:
             if fmatch := frame_re.search(f.as_posix()):
                 frame = int(fmatch.group(1))
                 frames.append(frame)
 
         padding_str = f"%{padding:0>2d}d"
-        name = file.name.replace(match, padding_str)
-        stem = file.name.split(match)[0].strip(".")
-        path = file.with_name(name)
+        name = path.name.replace(match, padding_str)
+        stem = path.name.split(match)[0].strip(".")
+        path = path.with_name(name)
         missing_frames = []
         prev_frame = frames[0]
         for frame in frames[1:]:
@@ -151,22 +183,6 @@ class File:
             missing_frames,
         )
 
-    @classmethod
-    def _from_file(cls, file: PathType) -> File:
-        path = Path(file)
-        name = path.name
-        stem = path.stem
-        suffix = path.suffix
-        return cls(path, name, stem, suffix)
-
-
-def as_file(file: PathType) -> File:
-    return File.from_file(file)
-
-
-def is_sequence(file: File) -> bool:
-    return file.is_sequence
-
 
 def ls(folder: PathType, max_depth: int = 1) -> list[File]:
     """List of all the File and FileSequences in a folder."""
@@ -184,7 +200,7 @@ def ls(folder: PathType, max_depth: int = 1) -> list[File]:
             if file in seen:
                 continue
 
-            f = as_file(file)
+            f = File.from_path(file)
             seen.append(file)
             if f.is_sequence:
                 seen.extend(f.files)
@@ -196,4 +212,4 @@ def ls(folder: PathType, max_depth: int = 1) -> list[File]:
     )
 
 
-FileType = Type[File]
+FileType = type[File]

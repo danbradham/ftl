@@ -43,7 +43,7 @@ class FileSelector(Window):
 
     @classmethod
     def get_directory(cls):
-        options = dict(modal=True, show=True, directory_selector=True)
+        options = {"modal": True, "show": True, "directory_selector": True}
         dialog = cls.detach(wait=True, options=options)
         try:
             return dialog.channel.outbox.get(False)

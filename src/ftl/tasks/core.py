@@ -3,9 +3,10 @@ from __future__ import annotations
 import sys
 import uuid
 from abc import ABC, abstractmethod
+from collections.abc import Mapping
 from dataclasses import dataclass, field, fields
 from time import sleep
-from typing import Any, ClassVar, Mapping, Type, get_origin, get_type_hints
+from typing import Any, ClassVar, get_origin, get_type_hints
 
 from typeguard import TypeCheckError, check_type
 
@@ -56,18 +57,18 @@ class Task(ABC):
             "help": "The source File or FileSequence to encode.",
         }
     )
-    # output: Any = field(
-    #     default=None,
-    #     metadata={
-    #         "hidden": True,
-    #         "help": (
-    #             "The output the Task is expected to produce. "
-    #             "Can be any type like a Path or just a String description. "
-    #             "Subclasses should initialize this in a __post_init__ method."
-    #         ),
-    #         "validate": False,
-    #     },
-    # )
+    output: Any = field(
+        default=None,
+        metadata={
+            "hidden": True,
+            "help": (
+                "The output the Task is expected to produce. "
+                "Can be any type like a Path or just a String description. "
+                "Subclasses should initialize this in a __post_init__ method."
+            ),
+            "validate": False,
+        },
+    )
 
     def __post_init__(self):
         errors = validate_task_parameters(self.__class__, self.__dict__)
@@ -94,7 +95,7 @@ class Task(ABC):
         self.error = None
         self.sub_tasks = []
 
-        # Call setup if defined
+        # Call setup on subtasks.
         self.setup()
 
     def __init_subclass__(cls, **kwargs):
@@ -173,7 +174,7 @@ class Task(ABC):
 
     # Subclassing Interface
     def setup(self):
-        return NotImplemented
+        return
 
     @abstractmethod
     def run(self) -> Any:
@@ -181,7 +182,7 @@ class Task(ABC):
 
 
 def validate_task_parameters(
-    task: Type[Task],
+    task: type[Task],
     parameters: Mapping[str, Any],
     ignore_missing=False,
 ) -> dict[str, str]:
@@ -208,10 +209,10 @@ def validate_task_parameters(
 class ParameterizedTask:
     """A Task wrapper.
 
-    This allows Tasks' to be configured / serialized to be called later.
+    This allows Tasks to be configured and serialized to be called later.
     """
 
-    task: Type[Task]
+    task: type[Task]
     parameters: dict = field(default_factory=dict)
 
     def __post_init__(self):
@@ -222,6 +223,10 @@ class ParameterizedTask:
         task = self.task(*args, **kwargs)
         return task()
 
+    @property
+    def enabled(self):
+        return self.parameters.get("enabled", True)
+
     def get_parameters(self, exclude_hidden: bool = True) -> dict[str, Any]:
         parameters = {}
         for param in fields(self.task):
@@ -231,7 +236,7 @@ class ParameterizedTask:
         return parameters
 
 
-def parameterize(task: Type[Task], **parameters):
+def parameterize(task: type[Task], **parameters):
     """Wrap a Task in a ParameterizedTask."""
 
     return ParameterizedTask(task, parameters)

@@ -1,5 +1,6 @@
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable, Literal, get_args, get_origin
+from typing import Any, Literal, get_args, get_origin
 
 import dearpygui.dearpygui as dpg
 
@@ -96,11 +97,10 @@ def ColorParameter(
     group = dpg.add_group(horizontal=True, horizontal_spacing=px(4))
 
     def rgb_to_hex(r, g, b):
-        return "#{:02x}{:02x}{:02x}".format(int(255 * r), int(255 * g), int(255 * b))
+        return f"#{int(255 * r):02x}{int(255 * g):02x}{int(255 * b):02x}"
 
     def hex_to_rgb(hex):
-        if hex.startswith("#"):
-            hex = hex[1:]
+        hex = hex.removeprefix("#")
         return tuple(int(hex[i : i + 2], 16) for i in (0, 2, 4))
 
     def checkbox_changed(sender, app_data, user_data):

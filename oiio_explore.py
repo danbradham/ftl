@@ -12,4 +12,4 @@ task = tasks.OCIODisplay(
 print(task.input)
 print(task.output)
 print(task.command())
-task()
+# task()

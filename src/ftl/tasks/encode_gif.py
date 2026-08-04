@@ -50,11 +50,11 @@ class EncodeGif(Task):
         },
     )
 
-    def __post_init__(self):
-        super().__post_init__()
-        self.output = (
-            self.input.path.parent / self.folder / (self.input.stem + ".gif")
-        ).resolve()
+    def setup(self):
+        if not self.output:
+            self.output = (
+                self.input.path.parent / self.folder / (self.input.stem + ".gif")
+            ).resolve()
 
     def command(self) -> list[str]:
         # fmt: off
@@ -130,8 +130,7 @@ class EncodeGif(Task):
             subprocess.run(
                 cmd,
                 check=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                capture_output=True,
                 creationflags=subprocess.CREATE_NO_WINDOW,
             )
         except subprocess.CalledProcessError as e:

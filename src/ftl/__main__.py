@@ -6,6 +6,7 @@ import typer
 from rich import print
 
 from ftl import files as fs
+from ftl import path
 from ftl.settings import Settings, default_settings, get_settings, save_settings
 
 
@@ -125,19 +126,19 @@ def encode(
 
     print("Artifacts...")
     artifacts = []
-    for r in runner.artifacts:
+    for artifact in runner.artifacts:
         # Check if artifact actually exists
         # Any artifact can implement exists to support this check.
-        if not r or (hasattr(r, "exists") and not r.exists()):
+        if not artifact or (hasattr(artifact, "exists") and not artifact.exists()):
             continue
 
         # Artifacts may support a format method.
-        if hasattr(r, "format"):
-            artifacts.append(r.format())
-        elif isinstance(r, Path):
-            artifacts.append(r.as_posix())
+        if hasattr(artifact, "format"):
+            artifacts.append(artifact.format())
+        elif isinstance(artifact, Path):
+            artifacts.append(artifact.as_posix())
         else:
-            artifacts.append(str(r))
+            artifacts.append(str(artifact))
     print(artifacts)
 
 
@@ -196,7 +197,7 @@ def version():
     try:
         ffmpeg_executable = tools.get_ffmpeg().replace("\\", "/")
         ffmpeg_version = tools.get_ffmpeg_version()
-    except Exception:
+    except FileNotFoundError:
         ffmpeg_executable = "FFMPEG not found..."
 
     # Get OCIO / OIIO info
@@ -206,6 +207,7 @@ def version():
     version_info = {
         "python": sys.version,
         "ftl": version("ftl"),
+        "ftl_package": path.as_posix(),
         "dearpygui": version("dearpygui"),
         "ffmpeg": ffmpeg_version,
         "ffmpeg_exe": ffmpeg_executable,

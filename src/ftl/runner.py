@@ -126,14 +126,16 @@ class Runner:
                     rule_map["tasks"].append(ocio_task)
                     rule_map["file_tasks"][-1].append(ocio_task)
                     # Cleanup task
-                    ocio_cleanup_task = ocio_task.cleanup_task()
+                    ocio_cleanup_task = ocio_task.cleanup_task(include_parent=True)
                     # The expected colormanaged_file
                     colormanaged_file = ocio_task.output
 
                 # Encoding Tasks
-                for parameterized_task in rule.tasks:
+                enabled_tasks = [t for t in rule.tasks if t.enabled]
+                for parameterized_task in enabled_tasks:
                     task_type = parameterized_task.task
                     task_parameters = parameterized_task.parameters
+
                     task_parameters["input"] = file
                     task = task_type(**task_parameters)
                     self._add_task(task)
@@ -238,10 +240,11 @@ class Runner:
         record.rule_file_patterns = rule.file_patterns
 
         # Add task to record
-        task = self.tasks[self.current_task]
-        record.task_id = task.id
-        record.task_name = task.name
-        record.task_progress = task.progress
+        if self.tasks:
+            task = self.tasks[self.current_task]
+            record.task_id = task.id
+            record.task_name = task.name
+            record.task_progress = task.progress
 
         # Capture all logging records
         self.log_records.append(record)

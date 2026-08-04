@@ -33,22 +33,20 @@ class OCIODisplay(Task):
         },
     )
 
-    def __post_init__(self):
-        super().__post_init__()
-
+    def setup(self):
         # TODO
         # This method should support creating temporary sequences
         # for File objects. Currently it only handles File -> File
         # or FileSequence -> FileSequence.
         # For file objects, we would need to check if they are videos
         # if so get the frame range and generate a FileSequence.
-        self.output: File = self.input.as_temp_file(suffix=".png")
-        self.temp_folder = self.output.path.parent
+        if not self.output:
+            self.output: File = self.input.as_temp_file(suffix=".png")
 
-    def cleanup_task(self) -> Delete:
+    def cleanup_task(self, include_parent: bool = False) -> Delete:
         return Delete(
             input=self.output,
-            include_parent=True,
+            include_parent=include_parent,
         )
 
     def _format_file_for_oiio(self, file: File) -> str:
@@ -100,7 +98,7 @@ class OCIODisplay(Task):
         self.log.info(f"Display Device: {self.display_device}")
         self.log.info(f"View Transform: {self.view_transform}")
 
-        if isinstance(self.input, File):
+        if not self.input.is_sequence:
             self.log.warning("Color Management not supported for images yet...")
             self.log.info(
                 "Skipping OCIODisplay: OCIO not supported for indiviual Files yet."

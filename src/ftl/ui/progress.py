@@ -9,7 +9,7 @@ from ftl.ui.theme import px, set_theme
 class ProgressDialog(core.Window):
     title = "Progress"
     width = 360
-    height = 120
+    height = 100
 
     def setup(self):
         self.exit_after = None
@@ -17,7 +17,7 @@ class ProgressDialog(core.Window):
         dpg.configure_viewport(
             item=self.primary_window,
             resizable=False,
-            decorated=False,
+            decorated=True,
         )
         with dpg.window(tag="primary", width=px(self.width), height=px(self.height)):
             dpg.add_text("Perparing Tasks...", tag="label")

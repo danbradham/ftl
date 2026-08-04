@@ -4,8 +4,9 @@ import sysconfig
 from pathlib import Path
 
 import OpenImageIO as oiio
+import PyOpenColorIO as ocio
 
-from ftl.settings import get_settings
+from ftl.settings import USER_DATA_DIR, get_settings
 
 
 class Tools:
@@ -25,15 +26,14 @@ def get_ffmpeg(ignore_settings=False):
     if Tools.ffmpeg_executable is not None:
         return Tools.ffmpeg_executable
 
-    if not ignore_settings:
-        if candidate := get_settings().get("ffmpeg"):
-            try:
-                set_ffmpeg(candidate)
-            except FileNotFoundError:
-                raise FileNotFoundError(
-                    f"Configured path for ffmpeg does not exist: '{candidate}'"
-                )
-            return candidate
+    if not ignore_settings and (candidate := get_settings().get("ffmpeg")):
+        try:
+            set_ffmpeg(candidate)
+        except FileNotFoundError:
+            raise FileNotFoundError(
+                f"Configured path for ffmpeg does not exist: '{candidate}'"
+            )
+        return candidate
 
     for path in os.environ["PATH"].split(os.pathsep):
         candidate = os.path.join(path, "ffmpeg.exe")
@@ -56,9 +56,9 @@ def get_ffmpeg_version():
         output = subprocess.check_output([get_ffmpeg(), "-version"], text=True)
         version = output.splitlines()[0].split()[2]
         return version
-    except Exception as e:
+    except subprocess.CalledProcessError as e:
         print(f"Error getting ffmpeg version: {e}")
-        return None
+        return
 
 
 def set_oiiotool(file: str):
@@ -120,7 +120,7 @@ def get_ocio_input_transforms() -> list[str]:
     """Get available input colorspaces from the OCIO config."""
 
     colorspaces = get_ocio_config().getColorSpaceNames()
-    return sorted(list(set(colorspaces) - set(get_ocio_display_devices())))
+    return sorted(set(colorspaces) - set(get_ocio_display_devices()))
 
 
 def get_ocio_default_input_transform() -> str:
@@ -172,3 +172,79 @@ def ocio_display(
         unpremult=unpremult,
     )
     out_buf.write(output.as_posix())
+
+
+def ocio_format_transform(
+    input_transform: str,
+    display_device: str,
+    view_transform: str,
+    format: str = "cinespace",
+):
+    """Format an OCIO transform name from its components."""
+
+    ext = {
+        "flame": ".3dl",
+        "lustre": ".3dl",
+        "Academy/ASC Common LUT Format": ".clf",
+        "Color Transform Format": ".ctf",
+        "cinespace": ".csp",
+        "houdini": ".lut",
+        "iridas_cube": ".cube",
+        "iridas_itx": ".itx",
+        "resolve_cube": ".cube",
+        "spi1d": ".spi1d",
+        "spi3d": ".spi3d",
+        "truelight": ".cub",
+        "icc": ".icc",
+    }[format]
+
+    result = f"{input_transform}_{display_device}_{view_transform}{ext}"
+    return "".join(result.split())
+
+
+def ocio_bake_lut(
+    output: Path,
+    input_transform: str,
+    display_device: str,
+    view_transform: str,
+    format: str = "cinespace",
+    config: ocio.Config | None = None,
+):
+    """Bake a LUT compatible with FFMPEG lut3d filter."""
+
+    baker = ocio.Baker()
+    baker.setFormat(format)
+    baker.setConfig(config or ocio.Config.CreateFromFile(os.environ["OCIO"]))
+    baker.setInputSpace(input_transform)
+    baker.setDisplayView(display_device, view_transform)
+    baker.bake(output.as_posix())
+
+
+def get_ocio_lut(
+    input_transform: str,
+    display_device: str,
+    view_transform: str,
+    format: str = "cinespace",
+    config: ocio.Config | None = None,
+) -> Path:
+    """Get or create a cached LUT for the given OCIO transform components."""
+
+    lut_name = ocio_format_transform(
+        input_transform,
+        display_device,
+        view_transform,
+        format,
+    )
+    lut_path = USER_DATA_DIR / "luts" / lut_name
+
+    if not lut_path.exists():
+        ocio_bake_lut(
+            lut_path,
+            input_transform,
+            display_device,
+            view_transform,
+            format,
+            config,
+        )
+
+    return lut_path

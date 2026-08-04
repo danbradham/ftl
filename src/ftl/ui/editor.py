@@ -613,13 +613,13 @@ class TasksList:
 
                             # Setup item kwargs
                             item_tag = f"{tag}_{name}"
-                            item_kwargs = dict(
-                                tag=item_tag,
-                                label=name,
-                                user_data=(task, name),
-                                callback=self.on_parameter_changed,
-                                default_value=value,
-                            )
+                            item_kwargs = {
+                                "tag": item_tag,
+                                "label": name,
+                                "user_data": (task, name),
+                                "callback": self.on_parameter_changed,
+                                "default_value": value,
+                            }
                             item_tooltip = param.metadata.get("help")
                             item_param_type = param.metadata.get("param_type")
                             item_id = None
